@@ -30,7 +30,7 @@ def geodesic_area_m2(geometry) -> float:
 router = APIRouter(prefix="/kml", tags=["KML"])
 
 @router.post("/import")
-async def import_kml(file: UploadFile = File(...), session: get_session):
+async def import_kml(session: get_session, file: UploadFile = File(...)):
     if not file.filename.lower().endswith(".kml"):
         raise HTTPException(status_code=400, detail="Only .kml files allowed")
 
