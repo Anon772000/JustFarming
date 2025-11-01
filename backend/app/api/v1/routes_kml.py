@@ -27,6 +27,18 @@ def geodesic_area_m2(geometry) -> float:
             return sum(geodesic_area_m2(p) for p in geometry.geoms)
         return 0.0
 
+def iter_features(container) -> list:
+    feats = getattr(container, "features", [])
+    if callable(feats):
+        try:
+            return list(feats())
+        except Exception:
+            return []
+    try:
+        return list(feats)
+    except TypeError:
+        return []
+
 router = APIRouter(prefix="/kml", tags=["KML"])
 
 @router.post("/import")
@@ -43,9 +55,9 @@ async def import_kml(session: get_session, file: UploadFile = File(...)):
 
     imported = 0
 
-    # iterate documents/folders -> placemarks (simple two-level walk)
-    for feature in doc.features():
-        for placemark in getattr(feature, "features", lambda: [])():
+    # iterate documents/folders -> placemarks (handle both list and callable features)
+    for feature in iter_features(doc):
+        for placemark in iter_features(feature):
             geom = getattr(placemark, "geometry", None)
             if not geom:
                 continue
