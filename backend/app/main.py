@@ -6,6 +6,8 @@ from .api.v1.routes_paddocks import router as paddock_router
 from .api.v1.routes_mobs import router as mob_router
 from .api.v1.routes_movements import router as movement_router
 from .api.v1.routes_sensors import router as sensor_router
+from app.api.v1.routes_kml import router as kml_router
+app.include_router(kml_router)
 
 app = FastAPI(title="Farmdeck Open API", version="0.1.0")
 

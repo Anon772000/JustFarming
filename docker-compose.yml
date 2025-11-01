@@ -31,13 +31,10 @@ services:
       - "9001:9001"
     volumes:
       - ./mosquitto:/mosquitto
-  
   frontend:
     build: ./frontend
-    working_dir: /app
-    command: ["npm", "run", "dev", "--", "--host"]
     ports:
-      - "5173:5173"
+      - "5173:80"
     environment:
       - VITE_API_BASE=http://localhost:8000
     volumes:

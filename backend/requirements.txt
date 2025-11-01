@@ -9,3 +9,5 @@ psycopg[binary]==3.2.3
 python-multipart==0.0.12
 httpx==0.27.2
 paho-mqtt==2.1.0
+fastkml
+shapely
