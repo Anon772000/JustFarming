@@ -46,14 +46,14 @@ export default function KmlUploader({ onUploaded }: Props) {
   };
 
   return (
-    <div className="p-4 border rounded-lg">
-      <input type="file" accept=".kml" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-      <button onClick={upload} className="ml-2 px-4 py-1 bg-green-600 text-white rounded">
-        Upload
-      </button>
-      <p className="mt-2 text-sm text-gray-600">{status}</p>
+    <div className="panel">
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input className="input" type="file" accept=".kml" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+        <button onClick={upload} className="btn btn--primary">Upload</button>
+      </div>
+      <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>{status}</p>
       {summary && (
-        <div className="mt-2 text-xs text-gray-700">
+        <div style={{ marginTop: 8, fontSize: 11 }}>
           {typeof summary.placemarks === 'number' && (
             <div>Total placemarks: {summary.placemarks}</div>
           )}

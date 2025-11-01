@@ -68,33 +68,32 @@ export default function App() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', height: '100%' }}>
       <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
-        <div style={{ padding: 16, background: '#164b2f', color: 'white' }}>
-          <h2 style={{ margin: 0, fontWeight: 700 }}>JustFarming</h2>
-          <div style={{ fontSize: 12, opacity: 0.85 }}>Field management</div>
+        <div className="sidebar-header">
+          <h2 className="sidebar-header__title">JustFarming</h2>
+          <div className="sidebar-header__subtitle">Field management</div>
         </div>
         <div style={{ padding: 16 }}>
-          <h3 style={{ marginTop: 0, color: '#164b2f' }}>Import KML</h3>
+          <h3 className="section-title" style={{ marginTop: 0 }}>Import KML</h3>
           <KmlUploader onUploaded={load} />
+          <h3 className="section-title">Create Paddock</h3>
+          <input className="input" value={newPaddockName} onChange={e => setNewPaddockName(e.target.value)} placeholder="Name" style={{ marginBottom: 8 }} />
+          <input className="input" type="number" value={newPaddockArea} onChange={e => setNewPaddockArea(parseFloat(e.target.value))} placeholder="Area (ha)" style={{ marginBottom: 8 }} />
+          <textarea className="textarea" value={newPaddockGeoJSON} onChange={e => setNewPaddockGeoJSON(e.target.value)} rows={6} style={{ marginBottom: 8 }} />
+          <button className="btn btn--primary" onClick={createPaddock}>Add Paddock</button>
 
-          <h3 style={{ marginTop: 24, color: '#164b2f' }}>Create Paddock</h3>
-          <input value={newPaddockName} onChange={e => setNewPaddockName(e.target.value)} placeholder="Name" style={{ width: '100%', marginBottom: 8, padding: 6 }} />
-          <input type="number" value={newPaddockArea} onChange={e => setNewPaddockArea(parseFloat(e.target.value))} placeholder="Area (ha)" style={{ width: '100%', marginBottom: 8, padding: 6 }} />
-          <textarea value={newPaddockGeoJSON} onChange={e => setNewPaddockGeoJSON(e.target.value)} rows={6} style={{ width: '100%', marginBottom: 8, padding: 6 }} />
-          <button onClick={createPaddock} style={{ background: '#2e7d32', color: 'white', border: 0, padding: '8px 12px', borderRadius: 6 }}>Add Paddock</button>
+          <h3 className="section-title">Create Mob</h3>
+          <input className="input" value={newMobName} onChange={e => setNewMobName(e.target.value)} placeholder="Name" style={{ marginBottom: 8 }} />
+          <input className="input" type="number" value={newMobCount} onChange={e => setNewMobCount(parseInt(e.target.value))} placeholder="Count" style={{ marginBottom: 8 }} />
+          <button className="btn btn--primary" onClick={createMob}>Add Mob</button>
 
-          <h3 style={{ marginTop: 24, color: '#164b2f' }}>Create Mob</h3>
-          <input value={newMobName} onChange={e => setNewMobName(e.target.value)} placeholder="Name" style={{ width: '100%', marginBottom: 8, padding: 6 }} />
-          <input type="number" value={newMobCount} onChange={e => setNewMobCount(parseInt(e.target.value))} placeholder="Count" style={{ width: '100%', marginBottom: 8, padding: 6 }} />
-          <button onClick={createMob} style={{ background: '#2e7d32', color: 'white', border: 0, padding: '8px 12px', borderRadius: 6 }}>Add Mob</button>
-
-          <h3 style={{ marginTop: 24, color: '#164b2f' }}>Mobs</h3>
+          <h3 className="section-title">Mobs</h3>
           <div style={{ maxHeight: 240, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
             {mobs.length === 0 && <div style={{ padding: 8, fontSize: 13, color: '#6b7280' }}>No mobs yet</div>}
             {mobs.map(m => (
               <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '1fr', padding: 8, borderBottom: '1px solid #f3f4f6' }}>
                 <div style={{ fontWeight: 600 }}>{m.name} <span style={{ fontWeight: 400, color: '#6b7280' }}>({m.count})</span></div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
-                  <select defaultValue={m.paddock_id ?? ''} onChange={e => transferMob(m.id, e.target.value ? parseInt(e.target.value) : null)} style={{ flex: 1, padding: 6 }}>
+                  <select className="select" defaultValue={m.paddock_id ?? ''} onChange={e => transferMob(m.id, e.target.value ? parseInt(e.target.value) : null)} style={{ flex: 1 }}>
                     <option value="">Unassigned</option>
                     {paddocks.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
