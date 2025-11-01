@@ -8,12 +8,12 @@ from datetime import datetime
 router = APIRouter()
 
 @router.get("/", response_model=list[SensorOut])
-async def list_sensors(session = get_session):
+async def list_sensors(session: get_session):
     result = await session.execute(select(Sensor))
     return [s for s in result.scalars().all()]
 
 @router.post("/", response_model=SensorOut)
-async def create_sensor(data: SensorCreate, session = get_session):
+async def create_sensor(data: SensorCreate, session: get_session):
     s = Sensor(name=data.name, type=data.type, paddock_id=data.paddock_id)
     session.add(s)
     await session.commit()
@@ -21,7 +21,7 @@ async def create_sensor(data: SensorCreate, session = get_session):
     return s
 
 @router.post("/{sensor_id}/value", response_model=SensorOut)
-async def update_sensor_value(sensor_id: int, data: SensorUpdateValue, session = get_session):
+async def update_sensor_value(sensor_id: int, data: SensorUpdateValue, session: get_session):
     s = await session.get(Sensor, sensor_id)
     if not s:
         raise HTTPException(404, "Sensor not found")
