@@ -7,7 +7,7 @@ type Props = {
 export default function KmlUploader({ onUploaded }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState("");
-  const API = (import.meta as any).env?.VITE_API_BASE || "http://localhost:8000";
+  const API = (import.meta as any).env?.VITE_API_BASE || "/api";
 
   const upload = async () => {
     if (!file) return;
@@ -15,10 +15,19 @@ export default function KmlUploader({ onUploaded }: Props) {
     formData.append("file", file);
     setStatus("Uploading...");
     try {
-      const res = await fetch(`${API}/api/v1/kml/import`, {
+      const res = await fetch(`${API}/v1/kml/import`, {
         method: "POST",
         body: formData,
       });
+      if (!res.ok) {
+        try {
+          const err = await res.json();
+          setStatus(`Error: ${err.detail || res.statusText}`);
+        } catch {
+          setStatus(`Error: ${res.status} ${res.statusText}`);
+        }
+        return;
+      }
       const data = await res.json();
       setStatus(`Imported ${data.imported} paddocks`);
       onUploaded?.();

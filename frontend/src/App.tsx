@@ -3,7 +3,7 @@ import MapView from './components/MapView'
 import axios from 'axios'
 import KmlUploader from "./components/KmlUploader";
 
-const API = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+const API = (import.meta as any).env?.VITE_API_BASE || '/api'
 
 type Paddock = { id: number; name: string; area_ha: number; polygon_geojson: string }
 type Mob = { id: number; name: string; count: number; avg_weight: number; paddock_id?: number | null }
@@ -20,8 +20,8 @@ export default function App() {
 
   const load = async () => {
     const [pRes, mRes] = await Promise.all([
-      axios.get(`${API}/api/v1/paddocks/`),
-      axios.get(`${API}/api/v1/mobs/`)
+      axios.get(`${API}/v1/paddocks/`),
+      axios.get(`${API}/v1/mobs/`)
     ])
     setPaddocks(pRes.data)
     setMobs(mRes.data)
@@ -30,7 +30,7 @@ export default function App() {
   useEffect(() => { load() }, [])
 
   const createPaddock = async () => {
-    await axios.post(`${API}/api/v1/paddocks/`, {
+    await axios.post(`${API}/v1/paddocks/`, {
       name: newPaddockName,
       area_ha: newPaddockArea,
       polygon_geojson: newPaddockGeoJSON
@@ -39,7 +39,7 @@ export default function App() {
   }
 
   const createMob = async () => {
-    await axios.post(`${API}/api/v1/mobs/`, {
+    await axios.post(`${API}/v1/mobs/`, {
       name: newMobName,
       count: newMobCount,
       avg_weight: 0,
