@@ -30,6 +30,12 @@ class MobOut(BaseModel):
     class Config:
         from_attributes = True
 
+class MobUpdate(BaseModel):
+    name: Optional[str] = None
+    count: Optional[int] = None
+    avg_weight: Optional[float] = None
+    paddock_id: Optional[int] = None
+
 class MovementCreate(BaseModel):
     mob_id: int
     from_paddock_id: Optional[int] = None
@@ -41,6 +47,40 @@ class MovementOut(BaseModel):
     from_paddock_id: Optional[int] = None
     to_paddock_id: int
     timestamp: datetime
+    class Config:
+        from_attributes = True
+
+class WormingRecordCreate(BaseModel):
+    mob_id: int
+    date: Optional[datetime] = None
+    drug: str
+    worm_count: Optional[int] = None
+    notes: Optional[str] = None
+
+class WormingRecordOut(BaseModel):
+    id: int
+    mob_id: int
+    date: datetime
+    drug: str
+    worm_count: Optional[int] = None
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class FootbathRecordCreate(BaseModel):
+    mob_id: int
+    date: Optional[datetime] = None
+    solution: str
+    concentration: Optional[str] = None
+    notes: Optional[str] = None
+
+class FootbathRecordOut(BaseModel):
+    id: int
+    mob_id: int
+    date: datetime
+    solution: str
+    concentration: Optional[str] = None
+    notes: Optional[str] = None
     class Config:
         from_attributes = True
 

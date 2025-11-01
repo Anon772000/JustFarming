@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+﻿import React, { useEffect, useMemo, useState } from 'react'
 import MapView from './components/MapView'
 import axios from 'axios'
 import KmlUploader from "./components/KmlUploader";
@@ -13,6 +13,8 @@ export default function App() {
   const [paddocks, setPaddocks] = useState<Paddock[]>([])
   const [mobs, setMobs] = useState<Mob[]>([])
   const [movements, setMovements] = useState<Movement[]>([])
+  const [historyMobId, setHistoryMobId] = useState<number | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const [newMobName, setNewMobName] = useState('Heifers A')
   const [newMobCount, setNewMobCount] = useState(50)
@@ -20,6 +22,14 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('mobTypes') || '{}') } catch { return {} }
   })
   useEffect(() => { localStorage.setItem('mobTypes', JSON.stringify(mobTypes)) }, [mobTypes])
+  const [mobDOBs, setMobDOBs] = useState<Record<number, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('mobDOBs') || '{}') } catch { return {} }
+  })
+  useEffect(() => { localStorage.setItem('mobDOBs', JSON.stringify(mobDOBs)) }, [mobDOBs])
+  const [mobTags, setMobTags] = useState<Record<number, { ear: 'left'|'right'|'unknown'; color: string; label?: string }[]>>(() => {
+    try { return JSON.parse(localStorage.getItem('mobTags') || '{}') } catch { return {} }
+  })
+  useEffect(() => { localStorage.setItem('mobTags', JSON.stringify(mobTags)) }, [mobTags])
 
   const load = async () => {
     const [pRes, mRes, mvRes] = await Promise.all([
@@ -61,14 +71,30 @@ export default function App() {
     return map
   }, [paddocks])
 
+  function ageFromDOB(d?: string) {
+    if (!d) return undefined
+    const dt = new Date(d)
+    if (isNaN(dt.getTime())) return undefined
+    const now = new Date()
+    const years = now.getFullYear() - dt.getFullYear()
+    const m = now.getMonth() - dt.getMonth()
+    const adj = (m < 0 || (m === 0 && now.getDate() < dt.getDate())) ? -1 : 0
+    return years + adj
+  }
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', height: '100%' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
+    <div className="app-shell">
+      {sidebarOpen && <div className="sidebar-scrim" onClick={() => setSidebarOpen(false)} />}
+      <div className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''}`} style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
         <div className="sidebar-header">
-          <h2 className="sidebar-header__title">JustFarming</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 className="sidebar-header__title" style={{ margin: 0 }}>JustFarming</h2>
+            <button className="btn" onClick={() => setSidebarOpen(false)} style={{ display: 'none' }}>Close</button>
+          </div>
           <div className="sidebar-header__subtitle">Field management</div>
         </div>
         <div style={{ padding: 16 }}>
+          <button className="btn btn--ghost" onClick={() => setSidebarOpen(false)} style={{ display: 'none' }}>Close Menu</button>
           <h3 className="section-title" style={{ marginTop: 0 }}>Import KML</h3>
           <KmlUploader onUploaded={load} />
 
@@ -82,9 +108,18 @@ export default function App() {
             {mobs.length === 0 && <div style={{ padding: 8, fontSize: 13, color: '#6b7280' }}>No mobs yet</div>}
             {mobs.map(m => (
               <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '1fr', padding: 8, borderBottom: '1px solid #f3f4f6' }}>
-                <div style={{ fontWeight: 600 }}>{m.name} <span style={{ fontWeight: 400, color: '#6b7280' }}>({m.count})</span></div>
+                <div style={{ fontWeight: 600 }}>
+                  {m.name}
+                  {mobDOBs[m.id] && <span style={{ fontWeight: 400, color: '#6b7280' }}> ({ageFromDOB(mobDOBs[m.id]) ?? ''}y)</span>}
+                  <span style={{ fontWeight: 400, color: '#6b7280' }}> ({m.count})</span>
+                </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
-                  <select className="select" defaultValue={m.paddock_id ?? ''} onChange={e => transferMob(m.id, e.target.value ? parseInt(e.target.value) : null)} style={{ flex: 1 }}>
+                  <select
+                    className="select"
+                    value={m.paddock_id ?? ''}
+                    onChange={e => transferMob(m.id, e.target.value ? parseInt(e.target.value) : null)}
+                    style={{ flex: 1 }}
+                  >
                     <option value="">Unassigned</option>
                     {paddocks.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -106,7 +141,34 @@ export default function App() {
                     <option value="camel">Camel</option>
                     <option value="other">Other</option>
                   </select>
+                  <input className="input" type="date" value={mobDOBs[m.id] || ''} onChange={e => setMobDOBs(prev => ({ ...prev, [m.id]: e.target.value }))} style={{ maxWidth: 140 }} />
+                  <button className="btn btn--ghost" onClick={() => setHistoryMobId(m.id)}>History</button>
+                  <input
+                    className="input"
+                    type="number"
+                    defaultValue={m.avg_weight}
+                    placeholder="Approx weight (kg)"
+                    onBlur={async (e) => {
+                      const val = parseFloat(e.target.value)
+                      if (!isNaN(val)) {
+                        await axios.patch(`${API}/v1/mobs/${m.id}`, { avg_weight: val })
+                        await load()
+                      }
+                    }}
+                    style={{ width: 140 }}
+                  />
                   <span style={{ fontSize: 12, color: '#6b7280' }}>{m.paddock_id ? paddockLookup.get(m.paddock_id)?.name : 'No paddock'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                  {(mobTags[m.id] || []).map((t, idx) => (
+                    <span key={idx} title={`${t.ear} ${t.label || ''}`} style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 999, background: t.color, color: '#fff', fontSize: 11 }}>{t.label || t.ear}</span>
+                  ))}
+                  <button className="btn" onClick={() => {
+                    const ear = (prompt('Ear (left/right/unknown)?', 'left') || 'left') as any
+                    const color = prompt('Color (hex or name)?', '#10b981') || '#10b981'
+                    const label = prompt('Label (optional)?') || undefined
+                    setMobTags(prev => ({ ...prev, [m.id]: [...(prev[m.id] || []), { ear, color, label }] }))
+                  }}>+ Tag</button>
                 </div>
               </div>
             ))}
@@ -115,7 +177,71 @@ export default function App() {
           <p style={{ marginTop: 24 }}><small style={{ color: '#6b7280' }}>API: {API}</small></p>
         </div>
       </div>
-      <MapView paddocks={paddocks} mobs={mobs} movements={movements} mobTypes={mobTypes} />
+      <div style={{ position: 'relative' }}>
+        <button className="control-btn" style={{ position: 'absolute', zIndex: 900, left: 12, top: 12 }} onClick={() => setSidebarOpen(s => !s)}>Menu</button>
+        <MapView paddocks={paddocks} mobs={mobs} movements={movements} mobTypes={mobTypes} selectedMobId={historyMobId} mobDOBs={mobDOBs} />
+      </div>
+
+      {historyMobId !== null && (
+        <HistoryModal
+          mob={mobs.find(x => x.id === historyMobId)!}
+          paddocks={paddocks}
+          movements={movements.filter(x => x.mob_id === historyMobId)}
+          onClose={() => setHistoryMobId(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+
+function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddocks: Paddock[]; movements: Movement[]; onClose: () => void }) {
+  const [start, setStart] = useState<string>('')
+  const [end, setEnd] = useState<string>('')
+  const [pfilter, setPfilter] = useState<string>('')
+  const nameOf = (id?: number | null) => id ? (paddocks.find(p => p.id === id)?.name || `Paddock ${id}`) : 'Unassigned'
+  const filtered = useMemo(() => {
+    const s = start ? new Date(start) : null
+    const e = end ? new Date(end) : null
+    const pid = pfilter ? parseInt(pfilter) : null
+    return movements.filter(x => {
+      const t = new Date(x.timestamp)
+      if (s && t < s) return false
+      if (e && t > e) return false
+      if (pid && x.to_paddock_id !== pid && x.from_paddock_id !== pid) return false
+      return true
+    }).sort((a,b)=> new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }, [movements, start, end, pfilter])
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
+      <div className="panel" style={{ width: 720, maxHeight: '80vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h3 className="section-title" style={{ margin: 0 }}>History — {mob.name}</h3>
+          <button className="btn" onClick={onClose}>Close</button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, margin: '8px 0' }}>
+          <input className="input" type="date" value={start} onChange={e => setStart(e.target.value)} />
+          <input className="input" type="date" value={end} onChange={e => setEnd(e.target.value)} />
+          <select className="select" value={pfilter} onChange={e => setPfilter(e.target.value)}>
+            <option value="">Any paddock</option>
+            {paddocks.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <div />
+        </div>
+        {filtered.length === 0 && <div className="muted" style={{ fontSize: 13 }}>No movements recorded.</div>}
+        <div>
+          {filtered.map((mv, idx) => (
+            <div key={mv.id} style={{ display: 'grid', gridTemplateColumns: '24px 1fr auto 1fr auto', gap: 8, padding: '8px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+              <div className="panel" style={{ width: 24, height: 24, borderRadius: 999, textAlign: 'center', lineHeight: '24px', fontSize: 12 }}>{filtered.length - idx}</div>
+              <div>{nameOf(mv.from_paddock_id)}</div>
+              <div className="muted">→</div>
+              <div>{nameOf(mv.to_paddock_id)}</div>
+              <div className="muted" style={{ fontSize: 12 }}>{new Date(mv.timestamp).toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

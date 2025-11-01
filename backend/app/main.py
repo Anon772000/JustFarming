@@ -7,6 +7,7 @@ from .api.v1.routes_mobs import router as mob_router
 from .api.v1.routes_movements import router as movement_router
 from .api.v1.routes_sensors import router as sensor_router
 from .api.v1.routes_kml import router as kml_router
+from .api.v1.routes_health import router as health_router
 import json
 
 app = FastAPI(title="JustFarming API", version="0.1.0")
@@ -51,3 +52,4 @@ app.include_router(mob_router, prefix="/api/v1/mobs", tags=["mobs"])
 app.include_router(movement_router, prefix="/api/v1/movements", tags=["movements"])
 app.include_router(sensor_router, prefix="/api/v1/sensors", tags=["sensors"])
 app.include_router(kml_router, prefix="/api/v1")
+app.include_router(health_router, prefix="/api/v1/health", tags=["health"])

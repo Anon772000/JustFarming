@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 from ..v1_deps import get_session
 from ...core.models import Mob, Movement
-from ...core.schemas import MobCreate, MobOut
+from ...core.schemas import MobCreate, MobOut, MobUpdate
 
 router = APIRouter()
 
@@ -21,4 +21,21 @@ async def create_mob(data: MobCreate, session: get_session):
         mv = Movement(mob_id=m.id, from_paddock_id=None, to_paddock_id=m.paddock_id)
         session.add(mv)
         await session.commit()
+    return m
+
+@router.patch("/{mob_id}", response_model=MobOut)
+async def update_mob(mob_id: int, data: MobUpdate, session: get_session):
+    m = await session.get(Mob, mob_id)
+    if not m:
+        raise HTTPException(404, "Mob not found")
+    if data.name is not None:
+        m.name = data.name
+    if data.count is not None:
+        m.count = data.count
+    if data.avg_weight is not None:
+        m.avg_weight = data.avg_weight
+    if data.paddock_id is not None:
+        m.paddock_id = data.paddock_id
+    await session.commit()
+    await session.refresh(m)
     return m
