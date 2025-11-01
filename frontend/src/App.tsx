@@ -19,7 +19,7 @@ export default function App() {
   const [historyMobId, setHistoryMobId] = useState<number | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const [newMobName, setNewMobName] = useState('Heifers A')
+  const [newMobName, setNewMobName] = useState('Group A')
   const [newMobCount, setNewMobCount] = useState(50)
   const [mobTypes, setMobTypes] = useState<Record<number, string>>(() => {
     try { return JSON.parse(localStorage.getItem('mobTypes') || '{}') } catch { return {} }
