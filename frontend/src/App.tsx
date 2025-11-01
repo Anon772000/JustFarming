@@ -2,6 +2,9 @@
 import MapView from './components/MapView'
 import axios from 'axios'
 import KmlUploader from "./components/KmlUploader";
+import { Line } from 'react-chartjs-2'
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend } from 'chart.js'
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend)
 
 const API = (import.meta as any).env?.VITE_API_BASE || '/api'
 
@@ -98,13 +101,15 @@ export default function App() {
           <h3 className="section-title" style={{ marginTop: 0 }}>Import KML</h3>
           <KmlUploader onUploaded={load} />
 
-          <h3 className="section-title">Create Mob</h3>
-          <input className="input" value={newMobName} onChange={e => setNewMobName(e.target.value)} placeholder="Name" style={{ marginBottom: 8 }} />
-          <input className="input" type="number" value={newMobCount} onChange={e => setNewMobCount(parseInt(e.target.value))} placeholder="Count" style={{ marginBottom: 8 }} />
-          <button className="btn btn--primary" onClick={createMob}>Add Mob</button>
+          <h3 className="section-title section-desktop-only">Create Mob</h3>
+          <div className="section-desktop-only">
+            <input className="input" value={newMobName} onChange={e => setNewMobName(e.target.value)} placeholder="Name" style={{ marginBottom: 8 }} />
+            <input className="input" type="number" value={newMobCount} onChange={e => setNewMobCount(parseInt(e.target.value))} placeholder="Count" style={{ marginBottom: 8 }} />
+            <button className="btn btn--primary" onClick={createMob}>Add Mob</button>
+          </div>
 
-          <h3 className="section-title">Mobs</h3>
-          <div style={{ maxHeight: 240, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+          <h3 className="section-title section-desktop-only">Mobs</h3>
+          <div className="section-desktop-only" style={{ maxHeight: 240, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
             {mobs.length === 0 && <div style={{ padding: 8, fontSize: 13, color: '#6b7280' }}>No mobs yet</div>}
             {mobs.map(m => (
               <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '1fr', padding: 8, borderBottom: '1px solid #f3f4f6' }}>
@@ -178,8 +183,7 @@ export default function App() {
         </div>
       </div>
       <div style={{ position: 'relative' }}>
-        <button className="control-btn" style={{ position: 'absolute', zIndex: 900, left: 12, top: 12 }} onClick={() => setSidebarOpen(s => !s)}>Menu</button>
-        <MapView paddocks={paddocks} mobs={mobs} movements={movements} mobTypes={mobTypes} selectedMobId={historyMobId} mobDOBs={mobDOBs} />
+        <MapView paddocks={paddocks} mobs={mobs} movements={movements} mobTypes={mobTypes} selectedMobId={historyMobId} mobDOBs={mobDOBs} onOpenMenu={() => setSidebarOpen(true)} />
       </div>
 
       {historyMobId !== null && (
@@ -196,10 +200,12 @@ export default function App() {
 
 
 function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddocks: Paddock[]; movements: Movement[]; onClose: () => void }) {
-  const [start, setStart] = useState<string>('')
-  const [end, setEnd] = useState<string>('')
-  const [pfilter, setPfilter] = useState<string>('')
+  const [tab, setTab] = useState<'moves' | 'health' | 'metrics'>('moves')
+  const [start, setStart] = useState('')
+  const [end, setEnd] = useState('')
+  const [pfilter, setPfilter] = useState('')
   const nameOf = (id?: number | null) => id ? (paddocks.find(p => p.id === id)?.name || `Paddock ${id}`) : 'Unassigned'
+
   const filtered = useMemo(() => {
     const s = start ? new Date(start) : null
     const e = end ? new Date(end) : null
@@ -213,35 +219,137 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
     }).sort((a,b)=> new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
   }, [movements, start, end, pfilter])
 
+  // Health records
+  const [worming, setWorming] = useState<any[]>([])
+  const [footbath, setFootbath] = useState<any[]>([])
+  const loadHealth = async () => {
+    const [w, f] = await Promise.all([
+      axios.get(`${API}/v1/health/worming`, { params: { mob_id: mob.id } }),
+      axios.get(`${API}/v1/health/footbath`, { params: { mob_id: mob.id } }),
+    ])
+    setWorming(w.data)
+    setFootbath(f.data)
+  }
+  useEffect(() => { if (tab !== 'moves') loadHealth() }, [tab])
+
+  // Chart data for worm count over time
+  const wormChart = useMemo(() => {
+    const points = (worming || []).filter((r: any) => r.worm_count != null)
+      .sort((a: any,b: any)=> new Date(a.date).getTime()-new Date(b.date).getTime())
+    return {
+      labels: points.map((r: any)=> new Date(r.date).toLocaleDateString()),
+      datasets: [{ label: 'Worm Count', data: points.map((r:any)=> r.worm_count), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.2)' }]
+    }
+  }, [worming])
+
+  // Simple forms
+  const [drug, setDrug] = useState('')
+  const [wormCount, setWormCount] = useState<number | ''>('')
+  const [wDate, setWDate] = useState('')
+  const [wNotes, setWNotes] = useState('')
+
+  const [solution, setSolution] = useState('')
+  const [conc, setConc] = useState('')
+  const [fDate, setFDate] = useState('')
+  const [fNotes, setFNotes] = useState('')
+
+  const submitWorming = async () => {
+    await axios.post(`${API}/v1/health/worming`, { mob_id: mob.id, date: wDate || undefined, drug, worm_count: wormCount === '' ? null : wormCount, notes: wNotes || undefined })
+    setDrug(''); setWormCount(''); setWDate(''); setWNotes(''); await loadHealth()
+  }
+  const submitFootbath = async () => {
+    await axios.post(`${API}/v1/health/footbath`, { mob_id: mob.id, date: fDate || undefined, solution, concentration: conc || undefined, notes: fNotes || undefined })
+    setSolution(''); setConc(''); setFDate(''); setFNotes(''); await loadHealth()
+  }
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
-      <div className="panel" style={{ width: 720, maxHeight: '80vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+      <div className="panel" style={{ width: 860, maxHeight: '85vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <h3 className="section-title" style={{ margin: 0 }}>History — {mob.name}</h3>
           <button className="btn" onClick={onClose}>Close</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, margin: '8px 0' }}>
-          <input className="input" type="date" value={start} onChange={e => setStart(e.target.value)} />
-          <input className="input" type="date" value={end} onChange={e => setEnd(e.target.value)} />
-          <select className="select" value={pfilter} onChange={e => setPfilter(e.target.value)}>
-            <option value="">Any paddock</option>
-            {paddocks.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <div />
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <button className="btn" onClick={()=>setTab('moves')}>Movements</button>
+          <button className="btn" onClick={()=>setTab('health')}>Health</button>
+          <button className="btn" onClick={()=>setTab('metrics')}>Metrics</button>
         </div>
-        {filtered.length === 0 && <div className="muted" style={{ fontSize: 13 }}>No movements recorded.</div>}
-        <div>
-          {filtered.map((mv, idx) => (
-            <div key={mv.id} style={{ display: 'grid', gridTemplateColumns: '24px 1fr auto 1fr auto', gap: 8, padding: '8px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
-              <div className="panel" style={{ width: 24, height: 24, borderRadius: 999, textAlign: 'center', lineHeight: '24px', fontSize: 12 }}>{filtered.length - idx}</div>
-              <div>{nameOf(mv.from_paddock_id)}</div>
-              <div className="muted">→</div>
-              <div>{nameOf(mv.to_paddock_id)}</div>
-              <div className="muted" style={{ fontSize: 12 }}>{new Date(mv.timestamp).toLocaleString()}</div>
+
+        {tab === 'moves' && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, margin: '8px 0' }}>
+              <input className="input" type="date" value={start} onChange={e => setStart(e.target.value)} />
+              <input className="input" type="date" value={end} onChange={e => setEnd(e.target.value)} />
+              <select className="select" value={pfilter} onChange={e => setPfilter(e.target.value)}>
+                <option value="">Any paddock</option>
+                {paddocks.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <div />
             </div>
-          ))}
-        </div>
+            {filtered.length === 0 && <div className="muted" style={{ fontSize: 13 }}>No movements recorded.</div>}
+            <div>
+              {filtered.map((mv, idx) => (
+                <div key={mv.id} style={{ display: 'grid', gridTemplateColumns: '24px 1fr auto 1fr auto', gap: 8, padding: '8px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+                  <div className="panel" style={{ width: 24, height: 24, borderRadius: 999, textAlign: 'center', lineHeight: '24px', fontSize: 12 }}>{filtered.length - idx}</div>
+                  <div>{nameOf(mv.from_paddock_id)}</div>
+                  <div className="muted">→</div>
+                  <div>{nameOf(mv.to_paddock_id)}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{new Date(mv.timestamp).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {tab === 'health' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <h4 className="section-title">Add Worming</h4>
+              <input className="input" placeholder="Drug" value={drug} onChange={e=>setDrug(e.target.value)} style={{ marginBottom: 6 }} />
+              <input className="input" type="number" placeholder="Worm count" value={wormCount as any} onChange={e=>setWormCount(e.target.value === '' ? '' : parseInt(e.target.value))} style={{ marginBottom: 6 }} />
+              <input className="input" type="date" value={wDate} onChange={e=>setWDate(e.target.value)} style={{ marginBottom: 6 }} />
+              <input className="input" placeholder="Notes" value={wNotes} onChange={e=>setWNotes(e.target.value)} style={{ marginBottom: 6 }} />
+              <button className="btn btn--primary" onClick={submitWorming}>Save</button>
+              <div style={{ marginTop: 10 }}>
+                <h4 className="section-title">History</h4>
+                {worming.map((r:any)=> (
+                  <div key={r.id} className="muted" style={{ fontSize: 12 }}>
+                    {new Date(r.date).toLocaleDateString()} — {r.drug}{r.worm_count!=null?` (count ${r.worm_count})`:''} {r.notes?`— ${r.notes}`:''}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="section-title">Add Footbath</h4>
+              <input className="input" placeholder="Solution" value={solution} onChange={e=>setSolution(e.target.value)} style={{ marginBottom: 6 }} />
+              <input className="input" placeholder="Concentration" value={conc} onChange={e=>setConc(e.target.value)} style={{ marginBottom: 6 }} />
+              <input className="input" type="date" value={fDate} onChange={e=>setFDate(e.target.value)} style={{ marginBottom: 6 }} />
+              <input className="input" placeholder="Notes" value={fNotes} onChange={e=>setFNotes(e.target.value)} style={{ marginBottom: 6 }} />
+              <button className="btn btn--primary" onClick={submitFootbath}>Save</button>
+              <div style={{ marginTop: 10 }}>
+                <h4 className="section-title">History</h4>
+                {footbath.map((r:any)=> (
+                  <div key={r.id} className="muted" style={{ fontSize: 12 }}>
+                    {new Date(r.date).toLocaleDateString()} — {r.solution}{r.concentration?` (${r.concentration})`:''} {r.notes?`— ${r.notes}`:''}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'metrics' && (
+          <div>
+            <h4 className="section-title">Worm Count</h4>
+            <WormChart data={wormChart} />
+          </div>
+        )}
+
       </div>
     </div>
   )
+}
+
+function WormChart({ data }: { data: any }) {
+  return <Line data={data} options={{ responsive: true, plugins: { legend: { display: true } }, scales: { y: { beginAtZero: true } } }} />
 }

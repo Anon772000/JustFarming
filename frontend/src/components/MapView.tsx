@@ -37,7 +37,7 @@ function makeEmojiIcon(emoji: string): DivIcon {
   return L.divIcon({ className: 'mob-marker', html: emoji, iconSize: [24, 24], iconAnchor: [12, 12] })
 }
 
-export default function MapView({ paddocks, mobs, movements, mobTypes, selectedMobId, mobDOBs }: { paddocks: Paddock[]; mobs: Mob[]; movements: Movement[]; mobTypes: MobTypes; selectedMobId?: number | null; mobDOBs?: Record<number, string> }) {
+export default function MapView({ paddocks, mobs, movements, mobTypes, selectedMobId, mobDOBs, onOpenMenu }: { paddocks: Paddock[]; mobs: Mob[]; movements: Movement[]; mobTypes: MobTypes; selectedMobId?: number | null; mobDOBs?: Record<number, string>; onOpenMenu?: () => void }) {
   const center: LatLngTuple = [-31.9, 148.6]
   const [userPos, setUserPos] = useState<LatLngTuple | null>(null)
   const [accuracy, setAccuracy] = useState<number | null>(null)
@@ -58,9 +58,7 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
 
   const paddockPolys = useMemo(() => {
     const map = new Map<number, LatLngTuple[]>()
-    for (const p of paddocks) {
-      map.set(p.id, parsePolygon(p.polygon_geojson))
-    }
+    for (const p of paddocks) map.set(p.id, parsePolygon(p.polygon_geojson))
     return map
   }, [paddocks])
 
@@ -99,9 +97,7 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
     let latest: Movement | undefined
     for (const mv of movements) {
       if (mv.mob_id === mobId && mv.to_paddock_id === toPaddockId) {
-        if (!latest || new Date(mv.timestamp) > new Date(latest.timestamp)) {
-          latest = mv
-        }
+        if (!latest || new Date(mv.timestamp) > new Date(latest.timestamp)) latest = mv
       }
     }
     return latest
@@ -170,12 +166,13 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
     return null
   }
 
-  function Controls({ gpsOn, setGpsOn, userPos }: { gpsOn: boolean; setGpsOn: any; userPos: LatLngTuple | null }) {
+  function Controls() {
     const map = useMap()
     return (
       <div className='map-controls'>
-        <button className='control-btn' onClick={() => setGpsOn((s: boolean) => !s)}>{gpsOn ? 'GPS: On' : 'GPS: Off'}</button>
-        <button className='control-btn' onClick={() => { if (userPos) map.flyTo(userPos as any, 16) }}>Locate me</button>
+        <button className='control-btn' onClick={() => onOpenMenu && onOpenMenu()}>Menu</button>
+        <button className='control-btn' onClick={() => { if (userPos) map.flyTo(userPos as any, 16) }}>Locate</button>
+        <button className='control-btn' onClick={() => setGpsOn(s => !s)}>{gpsOn ? 'GPS: On' : 'GPS: Off'}</button>
       </div>
     )
   }
@@ -227,10 +224,11 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
               const paddockName = m.paddock_id ? paddockNames.get(m.paddock_id) : undefined
               const typeKey = mobTypes[m.id] || 'cow'
               const icon = makeEmojiIcon(animalEmoji[typeKey] || '🐄')
+              const age = mobDOBs && mobDOBs[m.id] ? Math.max(0, Math.floor(((daysSince(mobDOBs[m.id])||0))/365)) : undefined
               return (
                 <Marker key={m.id} position={pos} icon={icon}>
                   <Popup>
-                    <strong>{m.name}{mobDOBs && mobDOBs[m.id] ? ` (${Math.max(0, Math.floor(((daysSince(mobDOBs[m.id])||0))/365))}y)` : ''}</strong><br/>
+                    <strong>{m.name}{age!=null?` (${age}y)`:''}</strong><br/>
                     Count: {m.count}
                     <br/>Paddock: {paddockName ?? 'Unassigned'}
                     <br/>Moved: {formatDate(movedDate)}{typeof days === 'number' ? (<><br/>Days on paddock: {days}</>) : null}
@@ -274,7 +272,7 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
           </LayersControl.Overlay>
         )}
       </LayersControl>
-      <Controls gpsOn={gpsOn} setGpsOn={setGpsOn} userPos={userPos} />
+      <Controls />
     </MapContainer>
   )
 }
