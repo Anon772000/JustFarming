@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { MapContainer, TileLayer, Polygon, Marker, Popup } from 'react-leaflet'
-import { LatLngTuple } from 'leaflet'
+import L, { LatLngExpression, LatLngTuple, DivIcon } from 'leaflet'
 
 type Paddock = { id: number; name: string; area_ha: number; polygon_geojson: string }
 type Mob = { id: number; name: string; count: number; avg_weight: number; paddock_id?: number | null }
@@ -16,8 +16,35 @@ function parsePolygon(geojson: string): LatLngTuple[] {
   }
 }
 
+function centroidLatLng(points: LatLngTuple[]): LatLngTuple | null {
+  if (!points || points.length === 0) return null
+  const n = points.length
+  let sumLat = 0
+  let sumLng = 0
+  for (const [lat, lng] of points) {
+    sumLat += lat
+    sumLng += lng
+  }
+  return [sumLat / n, sumLng / n]
+}
+
+const mobIcon: DivIcon = L.divIcon({
+  className: 'mob-marker',
+  html: '🐄',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12]
+})
+
 export default function MapView({ paddocks, mobs }: { paddocks: Paddock[]; mobs: Mob[] }) {
   const center: LatLngTuple = [-31.9, 148.6]
+
+  const paddockPolys = useMemo(() => {
+    const map = new Map<number, LatLngTuple[]>()
+    for (const p of paddocks) {
+      map.set(p.id, parsePolygon(p.polygon_geojson))
+    }
+    return map
+  }, [paddocks])
 
   return (
     <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
@@ -42,15 +69,18 @@ export default function MapView({ paddocks, mobs }: { paddocks: Paddock[]; mobs:
         </Polygon>
       ))}
 
-      {mobs.map(m => (
-        <Marker key={m.id} position={center}>
-          <Popup>
-            <strong>{m.name}</strong><br/>
-            Count: {m.count}
-          </Popup>
-        </Marker>
-      ))}
+      {mobs.map(m => {
+        const poly = m.paddock_id ? paddockPolys.get(m.paddock_id) : undefined
+        const pos = poly && poly.length ? (centroidLatLng(poly) as LatLngExpression) : (center as LatLngExpression)
+        return (
+          <Marker key={m.id} position={pos} icon={mobIcon}>
+            <Popup>
+              <strong>{m.name}</strong><br/>
+              Count: {m.count}{m.paddock_id ? (<><br/>Paddock ID: {m.paddock_id}</>) : null}
+            </Popup>
+          </Marker>
+        )
+      })}
     </MapContainer>
   )
 }
-
