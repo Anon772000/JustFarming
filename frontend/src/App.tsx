@@ -7,36 +7,32 @@ const API = (import.meta as any).env?.VITE_API_BASE || '/api'
 
 type Paddock = { id: number; name: string; area_ha: number; polygon_geojson: string }
 type Mob = { id: number; name: string; count: number; avg_weight: number; paddock_id?: number | null }
+type Movement = { id: number; mob_id: number; from_paddock_id?: number | null; to_paddock_id: number | null; timestamp: string }
 
 export default function App() {
   const [paddocks, setPaddocks] = useState<Paddock[]>([])
   const [mobs, setMobs] = useState<Mob[]>([])
-  const [newPaddockName, setNewPaddockName] = useState('North 1')
-  const [newPaddockArea, setNewPaddockArea] = useState(10)
-  const [newPaddockGeoJSON, setNewPaddockGeoJSON] = useState('{"type":"Polygon","coordinates":[[[148.6,-31.9],[148.61,-31.9],[148.61,-31.91],[148.6,-31.91],[148.6,-31.9]]]}')
+  const [movements, setMovements] = useState<Movement[]>([])
 
   const [newMobName, setNewMobName] = useState('Heifers A')
   const [newMobCount, setNewMobCount] = useState(50)
+  const [mobTypes, setMobTypes] = useState<Record<number, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('mobTypes') || '{}') } catch { return {} }
+  })
+  useEffect(() => { localStorage.setItem('mobTypes', JSON.stringify(mobTypes)) }, [mobTypes])
 
   const load = async () => {
-    const [pRes, mRes] = await Promise.all([
+    const [pRes, mRes, mvRes] = await Promise.all([
       axios.get(`${API}/v1/paddocks/`),
-      axios.get(`${API}/v1/mobs/`)
+      axios.get(`${API}/v1/mobs/`),
+      axios.get(`${API}/v1/movements/`)
     ])
     setPaddocks(pRes.data)
     setMobs(mRes.data)
+    setMovements(mvRes.data)
   }
 
   useEffect(() => { load() }, [])
-
-  const createPaddock = async () => {
-    await axios.post(`${API}/v1/paddocks/`, {
-      name: newPaddockName,
-      area_ha: newPaddockArea,
-      polygon_geojson: newPaddockGeoJSON
-    })
-    await load()
-  }
 
   const createMob = async () => {
     await axios.post(`${API}/v1/mobs/`, {
@@ -75,11 +71,6 @@ export default function App() {
         <div style={{ padding: 16 }}>
           <h3 className="section-title" style={{ marginTop: 0 }}>Import KML</h3>
           <KmlUploader onUploaded={load} />
-          <h3 className="section-title">Create Paddock</h3>
-          <input className="input" value={newPaddockName} onChange={e => setNewPaddockName(e.target.value)} placeholder="Name" style={{ marginBottom: 8 }} />
-          <input className="input" type="number" value={newPaddockArea} onChange={e => setNewPaddockArea(parseFloat(e.target.value))} placeholder="Area (ha)" style={{ marginBottom: 8 }} />
-          <textarea className="textarea" value={newPaddockGeoJSON} onChange={e => setNewPaddockGeoJSON(e.target.value)} rows={6} style={{ marginBottom: 8 }} />
-          <button className="btn btn--primary" onClick={createPaddock}>Add Paddock</button>
 
           <h3 className="section-title">Create Mob</h3>
           <input className="input" value={newMobName} onChange={e => setNewMobName(e.target.value)} placeholder="Name" style={{ marginBottom: 8 }} />
@@ -99,6 +90,22 @@ export default function App() {
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
+                  <select
+                    className="select"
+                    value={mobTypes[m.id] || 'cow'}
+                    onChange={e => setMobTypes(prev => ({ ...prev, [m.id]: e.target.value }))}
+                  >
+                    <option value="cow">Cattle</option>
+                    <option value="sheep">Sheep</option>
+                    <option value="goat">Goat</option>
+                    <option value="pig">Pig</option>
+                    <option value="horse">Horse</option>
+                    <option value="chicken">Chicken</option>
+                    <option value="deer">Deer</option>
+                    <option value="alpaca">Alpaca</option>
+                    <option value="camel">Camel</option>
+                    <option value="other">Other</option>
+                  </select>
                   <span style={{ fontSize: 12, color: '#6b7280' }}>{m.paddock_id ? paddockLookup.get(m.paddock_id)?.name : 'No paddock'}</span>
                 </div>
               </div>
@@ -108,7 +115,7 @@ export default function App() {
           <p style={{ marginTop: 24 }}><small style={{ color: '#6b7280' }}>API: {API}</small></p>
         </div>
       </div>
-      <MapView paddocks={paddocks} mobs={mobs} />
+      <MapView paddocks={paddocks} mobs={mobs} movements={movements} mobTypes={mobTypes} />
     </div>
   )
 }

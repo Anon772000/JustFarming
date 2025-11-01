@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 from ..v1_deps import get_session
-from ...core.models import Mob
+from ...core.models import Mob, Movement
 from ...core.schemas import MobCreate, MobOut
 
 router = APIRouter()
@@ -17,4 +17,8 @@ async def create_mob(data: MobCreate, session: get_session):
     session.add(m)
     await session.commit()
     await session.refresh(m)
+    if m.paddock_id is not None:
+        mv = Movement(mob_id=m.id, from_paddock_id=None, to_paddock_id=m.paddock_id)
+        session.add(mv)
+        await session.commit()
     return m
