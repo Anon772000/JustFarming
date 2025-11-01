@@ -1,0 +1,18 @@
+# Local environment
+.env
+backend/.env
+backend/.venv/
+**/__pycache__/
+
+# Node artifacts
+frontend/node_modules/
+frontend/dist/
+
+# KML and other large datasets
+farm (1).kml
+*.kml
+
+# Logs
+npm-debug.log*
+yarn-error.log
+
