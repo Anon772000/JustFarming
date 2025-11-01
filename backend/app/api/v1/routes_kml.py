@@ -4,6 +4,7 @@ from shapely.geometry import mapping, Polygon, MultiPolygon
 from pyproj import Geod
 import json
 import logging
+from xml.etree import ElementTree as ET
 
 from ..v1_deps import get_session
 from ...core.models import Paddock
@@ -59,6 +60,56 @@ def polygonish_geoms(g):
         for sub in g.geoms:
             yield from polygonish_geoms(sub)
 
+# Fallback XML helpers for Google Earth style KML
+KML_NS = {"kml": "http://www.opengis.net/kml/2.2", "gx": "http://www.google.com/kml/ext/2.2"}
+
+def _parse_coordinates(text: str) -> list[tuple[float, float]]:
+    pts: list[tuple[float, float]] = []
+    if not text:
+        return pts
+    for chunk in text.strip().split():
+        parts = chunk.split(",")
+        if len(parts) < 2:
+            continue
+        try:
+            lon = float(parts[0]); lat = float(parts[1])
+            pts.append((lon, lat))
+        except ValueError:
+            continue
+    if pts and pts[0] != pts[-1]:
+        pts.append(pts[0])
+    return pts
+
+def xml_fallback_extract_polygons(data: bytes):
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        try:
+            root = ET.fromstring(data.decode("utf-8", errors="ignore"))
+        except Exception:
+            return []
+    results: list[tuple[str, Polygon]] = []
+    placemarks = root.findall('.//kml:Placemark', KML_NS)
+    for pm in placemarks:
+        name_el = pm.find('kml:name', KML_NS)
+        name = name_el.text if name_el is not None else 'Unnamed paddock'
+        for poly_el in pm.findall('.//kml:Polygon', KML_NS):
+            outer_el = poly_el.find('kml:outerBoundaryIs/kml:LinearRing/kml:coordinates', KML_NS)
+            if outer_el is None or not (outer_el.text and outer_el.text.strip()):
+                continue
+            outer = _parse_coordinates(outer_el.text)
+            holes: list[list[tuple[float, float]]] = []
+            for hole_el in poly_el.findall('kml:innerBoundaryIs/kml:LinearRing/kml:coordinates', KML_NS):
+                if hole_el.text and hole_el.text.strip():
+                    holes.append(_parse_coordinates(hole_el.text))
+            try:
+                poly = Polygon(outer, holes if holes else None)
+                if poly.is_valid and not poly.is_empty:
+                    results.append((name, poly))
+            except Exception:
+                continue
+    return results
+
 router = APIRouter(prefix="/kml", tags=["KML"])
 
 @router.post("/import")
@@ -102,6 +153,32 @@ async def import_kml(session: get_session, file: UploadFile = File(...)):
             imported += 1
 
     await session.commit()
+
+    # Fallback: if nothing imported via fastkml, parse raw XML
+    if imported == 0:
+        xml_polys = xml_fallback_extract_polygons(data)
+        for idx, (nm, poly) in enumerate(xml_polys):
+            gj = json.dumps(mapping(poly))
+            area_ha = geodesic_area_m2(poly) / 10_000.0
+            session.add(Paddock(name=nm or f"Paddock {idx+1}", area_ha=area_ha, polygon_geojson=gj))
+        await session.commit()
+        imported = len(xml_polys)
+        try:
+            total_placemarks = len(ET.fromstring(data).findall('.//kml:Placemark', KML_NS))
+        except Exception:
+            pass
+        polygon_placemarks = imported
+        non_polygon_placemarks = max(total_placemarks - polygon_placemarks, 0)
+        geom_type_counts = {"Polygon": imported}
+        logger.info(
+            "KML import (fallback): file=%s imported=%d placemarks=%d polygon_placemarks=%d non_polygon_placemarks=%d",
+            file.filename,
+            imported,
+            total_placemarks,
+            polygon_placemarks,
+            non_polygon_placemarks,
+        )
+
     logger.info(
         "KML import: file=%s imported=%d placemarks=%d polygon_placemarks=%d non_polygon_placemarks=%d geom_types=%s",
         file.filename,
