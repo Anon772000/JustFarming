@@ -1,8 +1,13 @@
 import React, { useState } from "react";
 
-export default function KmlUploader() {
+type Props = {
+  onUploaded?: () => void;
+};
+
+export default function KmlUploader({ onUploaded }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState("");
+  const API = (import.meta as any).env?.VITE_API_BASE || "http://localhost:8000";
 
   const upload = async () => {
     if (!file) return;
@@ -10,12 +15,13 @@ export default function KmlUploader() {
     formData.append("file", file);
     setStatus("Uploading...");
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/v1/kml/import`, {
+      const res = await fetch(`${API}/api/v1/kml/import`, {
         method: "POST",
         body: formData,
       });
       const data = await res.json();
       setStatus(`Imported ${data.imported} paddocks`);
+      onUploaded?.();
     } catch (e) {
       setStatus("Error uploading file");
     }

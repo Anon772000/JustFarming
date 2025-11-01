@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import MapView from './components/MapView'
 import axios from 'axios'
+import KmlUploader from "./components/KmlUploader";
 
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
@@ -50,19 +51,22 @@ export default function App() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '100%' }}>
       <div style={{ padding: 16, borderRight: '1px solid #ddd' }}>
-        <h2>Farmdeck Open</h2>
+        <h2>JustFarming</h2>
+        <h3>Import KML</h3>
+        <KmlUploader onUploaded={load} />
+        
         <h3>Create Paddock</h3>
-        <input value={newPaddockName} onChange={e=>setNewPaddockName(e.target.value)} placeholder="Name" /><br/>
-        <input type="number" value={newPaddockArea} onChange={e=>setNewPaddockArea(parseFloat(e.target.value))} placeholder="Area (ha)" /><br/>
-        <textarea value={newPaddockGeoJSON} onChange={e=>setNewPaddockGeoJSON(e.target.value)} rows={6} style={{width:'100%'}} />
+        <input value={newPaddockName} onChange={e => setNewPaddockName(e.target.value)} placeholder="Name" /><br />
+        <input type="number" value={newPaddockArea} onChange={e => setNewPaddockArea(parseFloat(e.target.value))} placeholder="Area (ha)" /><br />
+        <textarea value={newPaddockGeoJSON} onChange={e => setNewPaddockGeoJSON(e.target.value)} rows={6} style={{ width: '100%' }} />
         <button onClick={createPaddock}>Add Paddock</button>
 
-        <h3 style={{marginTop:24}}>Create Mob</h3>
-        <input value={newMobName} onChange={e=>setNewMobName(e.target.value)} placeholder="Name" /><br/>
-        <input type="number" value={newMobCount} onChange={e=>setNewMobCount(parseInt(e.target.value))} placeholder="Count" /><br/>
+        <h3 style={{ marginTop: 24 }}>Create Mob</h3>
+        <input value={newMobName} onChange={e => setNewMobName(e.target.value)} placeholder="Name" /><br />
+        <input type="number" value={newMobCount} onChange={e => setNewMobCount(parseInt(e.target.value))} placeholder="Count" /><br />
         <button onClick={createMob}>Add Mob</button>
 
-        <p style={{marginTop:24}}><small>API: {API}</small></p>
+        <p style={{ marginTop: 24 }}><small>API: {API}</small></p>
       </div>
       <MapView paddocks={paddocks} mobs={mobs} />
     </div>
