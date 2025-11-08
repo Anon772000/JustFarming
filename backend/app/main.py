@@ -8,6 +8,8 @@ from .api.v1.routes_movements import router as movement_router
 from .api.v1.routes_sensors import router as sensor_router
 from .api.v1.routes_kml import router as kml_router
 from .api.v1.routes_health import router as health_router
+from .api.v1.routes_sheep import router as sheep_router
+from .api.v1.routes_fields import router as fields_router
 import json
 
 app = FastAPI(title="JustFarming API", version="0.1.0")
@@ -53,3 +55,5 @@ app.include_router(movement_router, prefix="/api/v1/movements", tags=["movements
 app.include_router(sensor_router, prefix="/api/v1/sensors", tags=["sensors"])
 app.include_router(kml_router, prefix="/api/v1")
 app.include_router(health_router, prefix="/api/v1/health", tags=["health"])
+app.include_router(sheep_router, prefix="/api/v1/sheep", tags=["sheep"])
+app.include_router(fields_router, prefix="/api/v1/fields", tags=["fields"])

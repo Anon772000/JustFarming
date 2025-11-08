@@ -6,14 +6,25 @@ class PaddockCreate(BaseModel):
     name: str
     area_ha: float = 0.0
     polygon_geojson: str  # GeoJSON string
+    crop_type: Optional[str] = None
+    crop_color: Optional[str] = None
 
 class PaddockOut(BaseModel):
     id: int
     name: str
     area_ha: float
     polygon_geojson: str
+    crop_type: Optional[str] = None
+    crop_color: Optional[str] = None
     class Config:
         from_attributes = True
+
+class PaddockUpdate(BaseModel):
+    name: Optional[str] = None
+    area_ha: Optional[float] = None
+    polygon_geojson: Optional[str] = None
+    crop_type: Optional[str] = None
+    crop_color: Optional[str] = None
 
 class MobCreate(BaseModel):
     name: str
@@ -100,5 +111,178 @@ class SensorOut(BaseModel):
     paddock_id: Optional[int] = None
     last_value: Optional[Any] = None
     last_seen: Optional[datetime] = None
+    class Config:
+        from_attributes = True
+
+# Sheep-related
+class RamCreate(BaseModel):
+    name: str
+    tag_id: Optional[str] = None
+    notes: Optional[str] = None
+
+class RamOut(BaseModel):
+    id: int
+    name: str
+    tag_id: Optional[str] = None
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class JoiningRecordCreate(BaseModel):
+    mob_id: int
+    ram_id: int
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class JoiningRecordOut(BaseModel):
+    id: int
+    mob_id: int
+    ram_id: int
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class MarkingRecordCreate(BaseModel):
+    mob_id: int
+    date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class MarkingRecordOut(BaseModel):
+    id: int
+    mob_id: int
+    date: datetime
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class WeaningRecordCreate(BaseModel):
+    mob_id: int
+    date: Optional[datetime] = None
+    weaned_count: Optional[int] = None
+    notes: Optional[str] = None
+
+class WeaningRecordOut(BaseModel):
+    id: int
+    mob_id: int
+    date: datetime
+    weaned_count: Optional[int] = None
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class FlyTreatmentRecordCreate(BaseModel):
+    mob_id: int
+    date: Optional[datetime] = None
+    chemical: str
+    rate: Optional[str] = None
+    notes: Optional[str] = None
+
+class FlyTreatmentRecordOut(BaseModel):
+    id: int
+    mob_id: int
+    date: datetime
+    chemical: str
+    rate: Optional[str] = None
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class FootParingRecordCreate(BaseModel):
+    mob_id: int
+    date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class FootParingRecordOut(BaseModel):
+    id: int
+    mob_id: int
+    date: datetime
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+# Field / crop operations
+class SprayRecordCreate(BaseModel):
+    paddock_id: int
+    date: Optional[datetime] = None
+    chemical: str
+    rate: Optional[str] = None
+    notes: Optional[str] = None
+
+class SprayRecordOut(BaseModel):
+    id: int
+    paddock_id: int
+    date: datetime
+    chemical: str
+    rate: Optional[str] = None
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class SowingRecordCreate(BaseModel):
+    paddock_id: int
+    date: Optional[datetime] = None
+    seed: str
+    rate: Optional[str] = None
+    notes: Optional[str] = None
+
+class SowingRecordOut(BaseModel):
+    id: int
+    paddock_id: int
+    date: datetime
+    seed: str
+    rate: Optional[str] = None
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class FertiliserRecordCreate(BaseModel):
+    paddock_id: int
+    date: Optional[datetime] = None
+    product: str
+    rate: Optional[str] = None
+    notes: Optional[str] = None
+
+class FertiliserRecordOut(BaseModel):
+    id: int
+    paddock_id: int
+    date: datetime
+    product: str
+    rate: Optional[str] = None
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class CutRecordCreate(BaseModel):
+    paddock_id: int
+    date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class CutRecordOut(BaseModel):
+    id: int
+    paddock_id: int
+    date: datetime
+    notes: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class HarvestRecordCreate(BaseModel):
+    paddock_id: int
+    date: Optional[datetime] = None
+    kind: str
+    amount: Optional[str] = None
+    notes: Optional[str] = None
+
+class HarvestRecordOut(BaseModel):
+    id: int
+    paddock_id: int
+    date: datetime
+    kind: str
+    amount: Optional[str] = None
+    notes: Optional[str] = None
     class Config:
         from_attributes = True

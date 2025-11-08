@@ -75,6 +75,31 @@ h3 { font-size: 14px; }
 .control-btn { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 12px; cursor: pointer; }
 .control-btn:hover { background: #f3f4f6; }
 
+/* Top bar with hamburger (mobile) */
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 48px;
+  background: var(--brand);
+  color: #fff;
+  display: none; /* desktop hidden */
+  align-items: center;
+  padding: 0 10px;
+  z-index: 1201;
+}
+.topbar__title { font-weight: 700; margin-left: 8px; font-size: 14px; letter-spacing: .3px; }
+.hamburger {
+  width: 36px; height: 36px; border-radius: 6px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #fff; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.hamburger span { display: block; width: 18px; height: 2px; background: #fff; position: relative; }
+.hamburger span::before, .hamburger span::after { content: ""; position: absolute; left: 0; width: 18px; height: 2px; background: #fff; }
+.hamburger span::before { top: -6px; }
+.hamburger span::after { top: 6px; }
+@media (max-width: 768px) {
+  .topbar { display: flex; }
+}
+
 /* Hide heavy sections on small screens */
 .section-desktop-only {}
 @media (max-width: 768px) {

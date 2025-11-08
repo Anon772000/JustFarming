@@ -8,9 +8,26 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 
 const API = (import.meta as any).env?.VITE_API_BASE || '/api'
 
-type Paddock = { id: number; name: string; area_ha: number; polygon_geojson: string }
+// Crop type to default color palette
+const cropPalette: Record<string, string> = {
+  'Wheat / Barley': '#E5C07B',
+  'Corn / Maize': '#B5E550',
+  'Canola / Rapeseed': '#FFD700',
+  'Cotton': '#D9D9D9',
+  'Soybeans': '#4CAF50',
+  'Sorghum': '#B74E25',
+  'Lucerne / Alfalfa': '#A4DE02',
+  'Pasture / Mixed Grazing': '#2E7D32',
+  'Fallow / Bare Soil': '#8B5A2B',
+  'Vegetables (general)': '#3DBF8A',
+  'Orchards / Trees': '#556B2F',
+  'Vineyards / Grapes': '#6B4C9A',
+}
+
+type Paddock = { id: number; name: string; area_ha: number; polygon_geojson: string; crop_type?: string | null; crop_color?: string | null }
 type Mob = { id: number; name: string; count: number; avg_weight: number; paddock_id?: number | null }
 type Movement = { id: number; mob_id: number; from_paddock_id?: number | null; to_paddock_id: number | null; timestamp: string }
+type Ram = { id: number; name: string; tag_id?: string | null; notes?: string | null }
 
 export default function App() {
   const [paddocks, setPaddocks] = useState<Paddock[]>([])
@@ -33,6 +50,10 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('mobTags') || '{}') } catch { return {} }
   })
   useEffect(() => { localStorage.setItem('mobTags', JSON.stringify(mobTags)) }, [mobTags])
+  const [rams, setRams] = useState<Ram[]>([])
+  const [selectedPaddockId, setSelectedPaddockId] = useState<number | ''>('')
+  const [cropType, setCropType] = useState('')
+  const [cropColor, setCropColor] = useState('#62a554')
   // Inline tag form state
   const [tagFormOpen, setTagFormOpen] = useState<Record<number, boolean>>({})
   const [tagEar, setTagEar] = useState<Record<number, 'left'|'right'|'unknown'>>({})
@@ -40,14 +61,16 @@ export default function App() {
   const [tagLabel, setTagLabel] = useState<Record<number, string>>({})
 
   const load = async () => {
-    const [pRes, mRes, mvRes] = await Promise.all([
+    const [pRes, mRes, mvRes, rRes] = await Promise.all([
       axios.get(`${API}/v1/paddocks/`),
       axios.get(`${API}/v1/mobs/`),
-      axios.get(`${API}/v1/movements/`)
+      axios.get(`${API}/v1/movements/`),
+      axios.get(`${API}/v1/sheep/rams`)
     ])
     setPaddocks(pRes.data)
     setMobs(mRes.data)
     setMovements(mvRes.data)
+    setRams(rRes.data)
   }
 
   useEffect(() => { load() }, [])
@@ -92,6 +115,11 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {/* Mobile top bar */}
+      <div className="topbar">
+        <button className="hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><span /></button>
+        <div className="topbar__title">JustFarming</div>
+      </div>
       {sidebarOpen && <div className="sidebar-scrim" onClick={() => setSidebarOpen(false)} />}
       <div className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''}`} style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
         <div className="sidebar-header">
@@ -111,6 +139,86 @@ export default function App() {
             <input className="input" value={newMobName} onChange={e => setNewMobName(e.target.value)} placeholder="Name" style={{ marginBottom: 8 }} />
             <input className="input" type="number" value={newMobCount} onChange={e => setNewMobCount(parseInt(e.target.value))} placeholder="Count" style={{ marginBottom: 8 }} />
             <button className="btn btn--primary" onClick={createMob}>Add Mob</button>
+          </div>
+          
+          <h3 className="section-title form-compact">Rams</h3>
+          <div className="panel form-compact" style={{ padding: 8, marginBottom: 8 }}>
+            <div style={{ maxHeight: 120, overflow: 'auto', marginBottom: 8 }}>
+              {rams.length === 0 && <div className="muted" style={{ fontSize: 12 }}>No rams yet</div>}
+              {rams.map(r => (
+                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid #f3f4f6' }}>
+                  <div>
+                    <strong>{r.name}</strong> {r.tag_id ? <span className="muted">({r.tag_id})</span> : null}
+                    {r.notes ? <div className="muted" style={{ fontSize: 12 }}>{r.notes}</div> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <AddRamForm onAdded={async()=>{ const rr = await axios.get(`${API}/v1/sheep/rams`); setRams(rr.data) }} />
+          </div>
+
+          <h3 className="section-title form-compact">Field Ops</h3>
+          <div className="form-compact panel" style={{ padding: 8, marginBottom: 8 }}>
+            <select className="select" value={selectedPaddockId as any} onChange={e=>setSelectedPaddockId(e.target.value?parseInt(e.target.value):'')} style={{ marginBottom: 6 }}>
+              <option value="">Select paddock</option>
+              {paddocks.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <div className="form-compact" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, marginBottom: 6 }}>
+              <select
+                className="select"
+                value={cropType}
+                onChange={e=>{
+                  const t = e.target.value
+                  setCropType(t)
+                  if (cropPalette[t]) setCropColor(cropPalette[t])
+                }}
+              >
+                <option value="">Crop type…</option>
+                {Object.keys(cropPalette).map(k => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+              <input className="input" type="color" value={cropColor} onChange={e=>setCropColor(e.target.value)} title="Crop color" />
+            </div>
+            <button className="btn btn--primary" disabled={!selectedPaddockId} onClick={async()=>{
+              if(!selectedPaddockId) return
+              await axios.patch(`${API}/v1/paddocks/${selectedPaddockId}`, { crop_type: cropType || null, crop_color: cropColor || null })
+              await load()
+            }}>Save Type/Color</button>
+            <div style={{ height: 8 }} />
+            <div className="form-compact" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <button className="btn" disabled={!selectedPaddockId} onClick={async()=>{
+                if(!selectedPaddockId) return
+                const chemical = prompt('Chemical?') || ''
+                const rate = prompt('Rate? (e.g., 1.5 L/ha)') || ''
+                if(!chemical) return
+                await axios.post(`${API}/v1/fields/spraying`, { paddock_id: selectedPaddockId, chemical, rate: rate || null })
+              }}>+ Spraying</button>
+              <button className="btn" disabled={!selectedPaddockId} onClick={async()=>{
+                if(!selectedPaddockId) return
+                const seed = prompt('Seed/Species?') || ''
+                const rate = prompt('Sowing rate?') || ''
+                if(!seed) return
+                await axios.post(`${API}/v1/fields/sowing`, { paddock_id: selectedPaddockId, seed, rate: rate || null })
+              }}>+ Sowing</button>
+              <button className="btn" disabled={!selectedPaddockId} onClick={async()=>{
+                if(!selectedPaddockId) return
+                const product = prompt('Fertiliser product?') || ''
+                const rate = prompt('Rate?') || ''
+                if(!product) return
+                await axios.post(`${API}/v1/fields/fertiliser`, { paddock_id: selectedPaddockId, product, rate: rate || null })
+              }}>+ Fertiliser</button>
+              <button className="btn" disabled={!selectedPaddockId} onClick={async()=>{
+                if(!selectedPaddockId) return
+                await axios.post(`${API}/v1/fields/cut`, { paddock_id: selectedPaddockId })
+              }}>+ Cut</button>
+              <button className="btn" disabled={!selectedPaddockId} onClick={async()=>{
+                if(!selectedPaddockId) return
+                const kind = prompt('Harvest type (bale/harvest)?', 'bale') || 'bale'
+                const amount = prompt('Amount (e.g., 120 bales or 3.2 t)?') || ''
+                await axios.post(`${API}/v1/fields/harvest`, { paddock_id: selectedPaddockId, kind, amount: amount || null })
+              }}>+ Harvest</button>
+            </div>
           </div>
 
           <h3 className="section-title form-compact">Mobs</h3>
@@ -282,13 +390,33 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
   // Health records
   const [worming, setWorming] = useState<any[]>([])
   const [footbath, setFootbath] = useState<any[]>([])
+  // Sheep-specific
+  const [rams, setRams] = useState<any[]>([])
+  const [joining, setJoining] = useState<any[]>([])
+  const [marking, setMarking] = useState<any[]>([])
+  const [weaning, setWeaning] = useState<any[]>([])
+  const [flyTx, setFlyTx] = useState<any[]>([])
+  const [paring, setParing] = useState<any[]>([])
+
   const loadHealth = async () => {
-    const [w, f] = await Promise.all([
+    const [w, f, r, j, mk, wn, ft, fp] = await Promise.all([
       axios.get(`${API}/v1/health/worming`, { params: { mob_id: mob.id } }),
       axios.get(`${API}/v1/health/footbath`, { params: { mob_id: mob.id } }),
+      axios.get(`${API}/v1/sheep/rams`),
+      axios.get(`${API}/v1/sheep/joining`, { params: { mob_id: mob.id } }),
+      axios.get(`${API}/v1/sheep/marking`, { params: { mob_id: mob.id } }),
+      axios.get(`${API}/v1/sheep/weaning`, { params: { mob_id: mob.id } }),
+      axios.get(`${API}/v1/sheep/fly_treatment`, { params: { mob_id: mob.id } }),
+      axios.get(`${API}/v1/sheep/foot_paring`, { params: { mob_id: mob.id } }),
     ])
     setWorming(w.data)
     setFootbath(f.data)
+    setRams(r.data)
+    setJoining(j.data)
+    setMarking(mk.data)
+    setWeaning(wn.data)
+    setFlyTx(ft.data)
+    setParing(fp.data)
   }
   useEffect(() => { if (tab !== 'moves') loadHealth() }, [tab])
 
@@ -321,6 +449,22 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
     await axios.post(`${API}/v1/health/footbath`, { mob_id: mob.id, date: fDate || undefined, solution, concentration: conc || undefined, notes: fNotes || undefined })
     setSolution(''); setConc(''); setFDate(''); setFNotes(''); await loadHealth()
   }
+
+  // Sheep form states
+  const [ramId, setRamId] = useState('')
+  const [joinStart, setJoinStart] = useState('')
+  const [joinNotes, setJoinNotes] = useState('')
+  const [markDate, setMarkDate] = useState('')
+  const [markNotes, setMarkNotes] = useState('')
+  const [weanDate, setWeanDate] = useState('')
+  const [weanCount, setWeanCount] = useState<number | ''>('')
+  const [weanNotes, setWeanNotes] = useState('')
+  const [flyDate, setFlyDate] = useState('')
+  const [flyChem, setFlyChem] = useState('')
+  const [flyRate, setFlyRate] = useState('')
+  const [flyNotes, setFlyNotes] = useState('')
+  const [fpDate, setFpDate] = useState('')
+  const [fpNotes, setFpNotes] = useState('')
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
@@ -395,6 +539,100 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
                 ))}
               </div>
             </div>
+            <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+              <h4 className="section-title">Sheep</h4>
+              <div className="panel" style={{ padding: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <h5 className="section-title">Joining</h5>
+                    <select className="select" value={ramId} onChange={e=>setRamId(e.target.value)} style={{ marginBottom: 6 }}>
+                      <option value="">Select ram</option>
+                      {rams.map((r:any)=> <option key={r.id} value={r.id}>{r.name}{r.tag_id?` (${r.tag_id})`:''}</option>)}
+                    </select>
+                    <input className="input" type="date" value={joinStart} onChange={e=>setJoinStart(e.target.value)} style={{ marginBottom: 6 }} />
+                    <input className="input" placeholder="Notes" value={joinNotes} onChange={e=>setJoinNotes(e.target.value)} style={{ marginBottom: 6 }} />
+                    <button className="btn btn--primary" disabled={!ramId} onClick={async()=>{
+                      await axios.post(`${API}/v1/sheep/joining`, { mob_id: mob.id, ram_id: parseInt(ramId), start_date: joinStart || undefined, notes: joinNotes || undefined })
+                      setRamId(''); setJoinStart(''); setJoinNotes(''); await loadHealth()
+                    }}>Save</button>
+                    <div style={{ marginTop: 6 }}>
+                      {joining.map((j:any)=> (
+                        <div key={j.id} className="muted" style={{ fontSize: 12 }}>
+                          {new Date(j.start_date).toLocaleDateString()} - Ram #{j.ram_id}{j.due_date?` (due ${new Date(j.due_date).toLocaleDateString()})`:''} {j.notes?`- ${j.notes}`:''}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h5 className="section-title">Marking</h5>
+                    <input className="input" type="date" value={markDate} onChange={e=>setMarkDate(e.target.value)} style={{ marginBottom: 6 }} />
+                    <input className="input" placeholder="Notes" value={markNotes} onChange={e=>setMarkNotes(e.target.value)} style={{ marginBottom: 6 }} />
+                    <button className="btn btn--primary" onClick={async()=>{
+                      await axios.post(`${API}/v1/sheep/marking`, { mob_id: mob.id, date: markDate || undefined, notes: markNotes || undefined })
+                      setMarkDate(''); setMarkNotes(''); await loadHealth()
+                    }}>Save</button>
+                    <div style={{ marginTop: 6 }}>
+                      {marking.map((r:any)=> (
+                        <div key={r.id} className="muted" style={{ fontSize: 12 }}>
+                          {new Date(r.date).toLocaleDateString()} {r.notes?`- ${r.notes}`:''}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h5 className="section-title">Weaning</h5>
+                    <input className="input" type="date" value={weanDate} onChange={e=>setWeanDate(e.target.value)} style={{ marginBottom: 6 }} />
+                    <input className="input" type="number" placeholder="Weaned count" value={weanCount as any} onChange={e=>setWeanCount(e.target.value===''?'':parseInt(e.target.value))} style={{ marginBottom: 6 }} />
+                    <input className="input" placeholder="Notes" value={weanNotes} onChange={e=>setWeanNotes(e.target.value)} style={{ marginBottom: 6 }} />
+                    <button className="btn btn--primary" onClick={async()=>{
+                      await axios.post(`${API}/v1/sheep/weaning`, { mob_id: mob.id, date: weanDate || undefined, weaned_count: weanCount===''?null:weanCount, notes: weanNotes || undefined })
+                      setWeanDate(''); setWeanCount(''); setWeanNotes(''); await loadHealth()
+                    }}>Save</button>
+                    <div style={{ marginTop: 6 }}>
+                      {weaning.map((r:any)=> (
+                        <div key={r.id} className="muted" style={{ fontSize: 12 }}>
+                          {new Date(r.date).toLocaleDateString()} {r.weaned_count!=null?`- ${r.weaned_count} weaned`:''} {r.notes?`- ${r.notes}`:''}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h5 className="section-title">Fly Treatment</h5>
+                    <input className="input" placeholder="Chemical" value={flyChem} onChange={e=>setFlyChem(e.target.value)} style={{ marginBottom: 6 }} />
+                    <input className="input" placeholder="Rate" value={flyRate} onChange={e=>setFlyRate(e.target.value)} style={{ marginBottom: 6 }} />
+                    <input className="input" type="date" value={flyDate} onChange={e=>setFlyDate(e.target.value)} style={{ marginBottom: 6 }} />
+                    <input className="input" placeholder="Notes" value={flyNotes} onChange={e=>setFlyNotes(e.target.value)} style={{ marginBottom: 6 }} />
+                    <button className="btn btn--primary" disabled={!flyChem} onClick={async()=>{
+                      await axios.post(`${API}/v1/sheep/fly_treatment`, { mob_id: mob.id, date: flyDate || undefined, chemical: flyChem, rate: flyRate || undefined, notes: flyNotes || undefined })
+                      setFlyChem(''); setFlyRate(''); setFlyDate(''); setFlyNotes(''); await loadHealth()
+                    }}>Save</button>
+                    <div style={{ marginTop: 6 }}>
+                      {flyTx.map((r:any)=> (
+                        <div key={r.id} className="muted" style={{ fontSize: 12 }}>
+                          {new Date(r.date).toLocaleDateString()} - {r.chemical}{r.rate?` (${r.rate})`:''} {r.notes?`- ${r.notes}`:''}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h5 className="section-title">Foot Paring</h5>
+                    <input className="input" type="date" value={fpDate} onChange={e=>setFpDate(e.target.value)} style={{ marginBottom: 6 }} />
+                    <input className="input" placeholder="Notes" value={fpNotes} onChange={e=>setFpNotes(e.target.value)} style={{ marginBottom: 6 }} />
+                    <button className="btn btn--primary" onClick={async()=>{
+                      await axios.post(`${API}/v1/sheep/foot_paring`, { mob_id: mob.id, date: fpDate || undefined, notes: fpNotes || undefined })
+                      setFpDate(''); setFpNotes(''); await loadHealth()
+                    }}>Save</button>
+                    <div style={{ marginTop: 6 }}>
+                      {paring.map((r:any)=> (
+                        <div key={r.id} className="muted" style={{ fontSize: 12 }}>
+                          {new Date(r.date).toLocaleDateString()} {r.notes?`- ${r.notes}`:''}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -412,4 +650,24 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
 
 function WormChart({ data }: { data: any }) {
   return <Line data={data} options={{ responsive: true, plugins: { legend: { display: true } }, scales: { y: { beginAtZero: true } } }} />
+}
+
+function AddRamForm({ onAdded }: { onAdded?: () => void }) {
+  const [name, setName] = useState('')
+  const [tag, setTag] = useState('')
+  const [notes, setNotes] = useState('')
+  const canSave = name.trim().length > 0
+  return (
+    <div className="form-compact" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      <input className="input" placeholder="Ram name" value={name} onChange={e=>setName(e.target.value)} />
+      <input className="input" placeholder="Tag ID" value={tag} onChange={e=>setTag(e.target.value)} />
+      <input className="input" placeholder="Notes" value={notes} onChange={e=>setNotes(e.target.value)} style={{ gridColumn: '1 / -1' }} />
+      <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 6 }}>
+        <button className="btn btn--primary" disabled={!canSave} onClick={async()=>{
+          await axios.post(`${API}/v1/sheep/rams`, { name, tag_id: tag || undefined, notes: notes || undefined })
+          setName(''); setTag(''); setNotes(''); onAdded && onAdded()
+        }}>Add Ram</button>
+      </div>
+    </div>
+  )
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { MapContainer, TileLayer, Polygon, Marker, Popup, LayersControl, Circle, LayerGroup, Polyline, useMap } from 'react-leaflet'
 import L, { LatLngExpression, LatLngTuple, DivIcon } from 'leaflet'
 
-type Paddock = { id: number; name: string; area_ha: number; polygon_geojson: string }
+type Paddock = { id: number; name: string; area_ha: number; polygon_geojson: string; crop_type?: string | null; crop_color?: string | null }
 type Mob = { id: number; name: string; count: number; avg_weight: number; paddock_id?: number | null }
 type Movement = { id: number; mob_id: number; from_paddock_id?: number | null; to_paddock_id: number | null; timestamp: string }
 type MobTypes = Record<number, string>
@@ -203,10 +203,11 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
         <LayersControl.Overlay checked name='Paddocks'>
           <LayerGroup>
             {paddocks.map(p => (
-              <Polygon key={p.id} positions={parsePolygon(p.polygon_geojson)}>
+              <Polygon key={p.id} positions={parsePolygon(p.polygon_geojson)} pathOptions={{ color: p.crop_color || '#198754', fillColor: p.crop_color || '#198754', fillOpacity: 0.25 }}>
                 <Popup>
                   <strong>{p.name}</strong><br/>
                   Area: {p.area_ha} ha
+                  {p.crop_type ? (<><br/>Type: {p.crop_type}</>) : null}
                 </Popup>
               </Polygon>
             ))}
@@ -276,4 +277,3 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
     </MapContainer>
   )
 }
-
