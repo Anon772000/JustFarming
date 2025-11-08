@@ -80,3 +80,14 @@ h3 { font-size: 14px; }
 @media (max-width: 768px) {
   .section-desktop-only { display: none !important; }
 }
+
+/* Compact form style, especially for mobile */
+.form-compact .input,
+.form-compact .select,
+.form-compact .textarea { padding: 6px 8px; font-size: 13px; }
+.form-compact .btn { padding: 6px 10px; font-size: 12px; }
+.form-compact .row { display: grid; grid-template-columns: 1fr; gap: 8px; }
+@media (min-width: 769px) {
+  .form-compact .row-2 { grid-template-columns: 1fr 1fr; }
+  .form-compact .row-3 { grid-template-columns: 1fr 1fr 1fr; }
+}

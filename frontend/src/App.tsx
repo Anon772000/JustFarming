@@ -33,6 +33,11 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('mobTags') || '{}') } catch { return {} }
   })
   useEffect(() => { localStorage.setItem('mobTags', JSON.stringify(mobTags)) }, [mobTags])
+  // Inline tag form state
+  const [tagFormOpen, setTagFormOpen] = useState<Record<number, boolean>>({})
+  const [tagEar, setTagEar] = useState<Record<number, 'left'|'right'|'unknown'>>({})
+  const [tagColor, setTagColor] = useState<Record<number, string>>({})
+  const [tagLabel, setTagLabel] = useState<Record<number, string>>({})
 
   const load = async () => {
     const [pRes, mRes, mvRes] = await Promise.all([
@@ -92,24 +97,24 @@ export default function App() {
         <div className="sidebar-header">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h2 className="sidebar-header__title" style={{ margin: 0 }}>JustFarming</h2>
-            <button className="btn" onClick={() => setSidebarOpen(false)} style={{ display: 'none' }}>Close</button>
+            <button className="btn btn--ghost" onClick={() => setSidebarOpen(false)}>Close</button>
           </div>
           <div className="sidebar-header__subtitle">Field management</div>
         </div>
         <div style={{ padding: 16 }}>
-          <button className="btn btn--ghost" onClick={() => setSidebarOpen(false)} style={{ display: 'none' }}>Close Menu</button>
+          <button className="btn btn--ghost" onClick={() => setSidebarOpen(false)}>Close Menu</button>
           <h3 className="section-title" style={{ marginTop: 0 }}>Import KML</h3>
           <KmlUploader onUploaded={load} />
 
-          <h3 className="section-title section-desktop-only">Create Mob</h3>
-          <div className="section-desktop-only">
+          <h3 className="section-title form-compact">Create Mob</h3>
+          <div className="form-compact">
             <input className="input" value={newMobName} onChange={e => setNewMobName(e.target.value)} placeholder="Name" style={{ marginBottom: 8 }} />
             <input className="input" type="number" value={newMobCount} onChange={e => setNewMobCount(parseInt(e.target.value))} placeholder="Count" style={{ marginBottom: 8 }} />
             <button className="btn btn--primary" onClick={createMob}>Add Mob</button>
           </div>
 
-          <h3 className="section-title section-desktop-only">Mobs</h3>
-          <div className="section-desktop-only" style={{ maxHeight: 240, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+          <h3 className="section-title form-compact">Mobs</h3>
+          <div className="form-compact" style={{ maxHeight: 260, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
             {mobs.length === 0 && <div style={{ padding: 8, fontSize: 13, color: '#6b7280' }}>No mobs yet</div>}
             {mobs.map(m => (
               <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '1fr', padding: 8, borderBottom: '1px solid #f3f4f6' }}>
@@ -166,14 +171,69 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
                   {(mobTags[m.id] || []).map((t, idx) => (
-                    <span key={idx} title={`${t.ear} ${t.label || ''}`} style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 999, background: t.color, color: '#fff', fontSize: 11 }}>{t.label || t.ear}</span>
+                    <span key={idx} title={`${t.ear} ${t.label || ''}`}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 6px', borderRadius: 999, background: t.color, color: '#fff', fontSize: 11 }}>
+                      {t.label || t.ear}
+                      <button
+                        className="btn"
+                        style={{ background: '#0006', color: '#fff', padding: '0 6px', borderRadius: 999, fontSize: 11, lineHeight: '18px' }}
+                        onClick={() => {
+                          setMobTags(prev => {
+                            const arr = [...(prev[m.id] || [])]
+                            arr.splice(idx, 1)
+                            return { ...prev, [m.id]: arr }
+                          })
+                        }}
+                        aria-label="Remove tag"
+                      >×</button>
+                    </span>
                   ))}
-                  <button className="btn" onClick={() => {
-                    const ear = (prompt('Ear (left/right/unknown)?', 'left') || 'left') as any
-                    const color = prompt('Color (hex or name)?', '#10b981') || '#10b981'
-                    const label = prompt('Label (optional)?') || undefined
-                    setMobTags(prev => ({ ...prev, [m.id]: [...(prev[m.id] || []), { ear, color, label }] }))
-                  }}>+ Tag</button>
+                </div>
+                <div className="form-compact" style={{ marginTop: 6 }}>
+                  {!tagFormOpen[m.id] ? (
+                    <button className="btn btn--ghost" onClick={() => setTagFormOpen(prev => ({ ...prev, [m.id]: true }))}>+ Tag</button>
+                  ) : (
+                    <div style={{ display: 'grid', gap: 6, gridTemplateColumns: '1fr 1fr 1fr auto' }}>
+                      <select
+                        className="select"
+                        value={tagEar[m.id] || 'left'}
+                        onChange={e => setTagEar(prev => ({ ...prev, [m.id]: e.target.value as any }))}
+                        aria-label="Tag ear"
+                      >
+                        <option value="left">Left ear</option>
+                        <option value="right">Right ear</option>
+                        <option value="unknown">Unknown</option>
+                      </select>
+                      <input
+                        className="input"
+                        type="color"
+                        value={tagColor[m.id] || '#10b981'}
+                        onChange={e => setTagColor(prev => ({ ...prev, [m.id]: e.target.value }))}
+                        aria-label="Tag color"
+                      />
+                      <input
+                        className="input"
+                        placeholder="Label"
+                        value={tagLabel[m.id] || ''}
+                        onChange={e => setTagLabel(prev => ({ ...prev, [m.id]: e.target.value }))}
+                        aria-label="Tag label"
+                      />
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className="btn btn--primary"
+                          onClick={() => {
+                            const ear = (tagEar[m.id] || 'left') as 'left'|'right'|'unknown'
+                            const color = tagColor[m.id] || '#10b981'
+                            const label = (tagLabel[m.id] || '').trim() || undefined
+                            setMobTags(prev => ({ ...prev, [m.id]: [...(prev[m.id] || []), { ear, color, label }] }))
+                            setTagFormOpen(prev => ({ ...prev, [m.id]: false }))
+                            setTagLabel(prev => ({ ...prev, [m.id]: '' }))
+                          }}
+                        >Add</button>
+                        <button className="btn" onClick={() => setTagFormOpen(prev => ({ ...prev, [m.id]: false }))}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -302,7 +362,7 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
         )}
 
         {tab === 'health' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-compact" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <h4 className="section-title">Add Worming</h4>
               <input className="input" placeholder="Drug" value={drug} onChange={e=>setDrug(e.target.value)} style={{ marginBottom: 6 }} />
