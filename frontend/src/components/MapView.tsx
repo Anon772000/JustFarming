@@ -43,6 +43,28 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
   const [accuracy, setAccuracy] = useState<number | null>(null)
   const [gpsOn, setGpsOn] = useState<boolean>(true)
   const [legendOpen, setLegendOpen] = useState<boolean>(false)
+  const [legendOnlyUsed, setLegendOnlyUsed] = useState<boolean>(() => (localStorage.getItem('legendOnlyUsed') === 'true'))
+  const palette: Record<string, string> = {
+    'Wheat / Barley': '#E5C07B',
+    'Corn / Maize': '#B5E550',
+    'Canola / Rapeseed': '#FFD700',
+    'Cotton': '#D9D9D9',
+    'Soybeans': '#4CAF50',
+    'Sorghum': '#B74E25',
+    'Lucerne / Alfalfa': '#A4DE02',
+    'Pasture / Mixed Grazing': '#2E7D32',
+    'Fallow / Bare Soil': '#8B5A2B',
+    'Vegetables (general)': '#3DBF8A',
+    'Orchards / Trees': '#556B2F',
+    'Vineyards / Grapes': '#6B4C9A',
+  }
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === 'legendOnlyUsed') setLegendOnlyUsed(e.newValue === 'true')
+    }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }, [])
 
   useEffect(() => {
     if (!navigator.geolocation || !gpsOn) return
@@ -334,16 +356,16 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
               <strong style={{ fontSize: 12 }}>Crop Legend</strong>
               <button className='control-btn' onClick={() => setLegendOpen(false)}>Close</button>
             </div>
-            {Array.from(new Map(paddocks
+            {(legendOnlyUsed ? Array.from(new Map(paddocks
               .filter(p => (p.crop_type && p.crop_color))
               .map(p => [p.crop_type as string, p.crop_color as string])
-            ).entries()).map(([type, color]) => (
+            ).entries()) : Object.entries(palette)).map(([type, color]) => (
               <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, margin: '4px 0' }}>
                 <span style={{ width: 12, height: 12, borderRadius: 2, background: color as string, display: 'inline-block', border: '1px solid #e5e7eb' }} />
                 <span>{type}</span>
               </div>
             ))}
-            {paddocks.filter(p=>p.crop_type && p.crop_color).length === 0 && (
+            {legendOnlyUsed && paddocks.filter(p=>p.crop_type && p.crop_color).length === 0 && (
               <div className='muted' style={{ fontSize: 12 }}>No crop types set</div>
             )}
           </div>
