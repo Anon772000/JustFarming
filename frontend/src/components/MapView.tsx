@@ -37,11 +37,12 @@ function makeEmojiIcon(emoji: string): DivIcon {
   return L.divIcon({ className: 'mob-marker', html: emoji, iconSize: [24, 24], iconAnchor: [12, 12] })
 }
 
-export default function MapView({ paddocks, mobs, movements, mobTypes, selectedMobId, mobDOBs, onOpenMenu }: { paddocks: Paddock[]; mobs: Mob[]; movements: Movement[]; mobTypes: MobTypes; selectedMobId?: number | null; mobDOBs?: Record<number, string>; onOpenMenu?: () => void }) {
+export default function MapView({ paddocks, mobs, movements, mobTypes, selectedMobId, mobDOBs, onOpenMenu, onOpenField, onOpenMobHistory }: { paddocks: Paddock[]; mobs: Mob[]; movements: Movement[]; mobTypes: MobTypes; selectedMobId?: number | null; mobDOBs?: Record<number, string>; onOpenMenu?: () => void; onOpenField?: (paddockId: number) => void; onOpenMobHistory?: (mobId: number) => void }) {
   const center: LatLngTuple = [-31.9, 148.6]
   const [userPos, setUserPos] = useState<LatLngTuple | null>(null)
   const [accuracy, setAccuracy] = useState<number | null>(null)
   const [gpsOn, setGpsOn] = useState<boolean>(true)
+  const [legendOpen, setLegendOpen] = useState<boolean>(false)
 
   useEffect(() => {
     if (!navigator.geolocation || !gpsOn) return
@@ -76,6 +77,33 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
     }
     return m
   }, [paddockPolys])
+
+  // Offset marker positions when multiple mobs share the same paddock
+  const mobPositions = useMemo(() => {
+    const positions = new Map<number, LatLngTuple>()
+    const byPid = new Map<number, Mob[]>()
+    for (const m of mobs) {
+      const pid = m.paddock_id ?? -1
+      if (!byPid.has(pid)) byPid.set(pid, [])
+      byPid.get(pid)!.push(m)
+    }
+    byPid.forEach((arr, pid) => {
+      const base = pid !== -1 ? centroidByPaddock.get(pid) : undefined
+      if (!base) {
+        arr.forEach(m => positions.set(m.id, center))
+        return
+      }
+      if (arr.length === 1) { positions.set(arr[0].id, base); return }
+      const [lat0, lng0] = base
+      const n = arr.length
+      const radius = 0.00018 // ~20m in degrees (approx)
+      arr.forEach((m, i) => {
+        const a = (2 * Math.PI * i) / n
+        positions.set(m.id, [lat0 + radius * Math.sin(a), lng0 + radius * Math.cos(a)])
+      })
+    })
+    return positions
+  }, [mobs, centroidByPaddock])
 
   const pathSegments: LatLngTuple[][] = useMemo(() => {
     if (!selectedMobId) return []
@@ -177,6 +205,21 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
     )
   }
 
+  function FitToPaddocks() {
+    const map = useMap()
+    useEffect(() => {
+      const pts: LatLngTuple[] = []
+      paddocks.forEach(p => {
+        const poly = parsePolygon(p.polygon_geojson)
+        poly.forEach(pt => pts.push(pt))
+      })
+      if (pts.length > 0) {
+        map.fitBounds(L.latLngBounds(pts as any).pad(0.2))
+      }
+    }, [paddocks])
+    return null
+  }
+
   return (
     <MapContainer center={center} zoom={13} className='map-container'>
       <LayersControl position='topright'>
@@ -203,11 +246,13 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
         <LayersControl.Overlay checked name='Paddocks'>
           <LayerGroup>
             {paddocks.map(p => (
-              <Polygon key={p.id} positions={parsePolygon(p.polygon_geojson)} pathOptions={{ color: p.crop_color || '#198754', fillColor: p.crop_color || '#198754', fillOpacity: 0.25 }}>
+              <Polygon key={p.id} positions={parsePolygon(p.polygon_geojson)} pathOptions={{ color: p.crop_color || '#198754', fillColor: p.crop_color || '#198754', fillOpacity: 0.25 }} eventHandlers={{ click: () => onOpenField && onOpenField(p.id) }}>
                 <Popup>
                   <strong>{p.name}</strong><br/>
                   Area: {p.area_ha} ha
                   {p.crop_type ? (<><br/>Type: {p.crop_type}</>) : null}
+                  <br/>
+                  <button className='control-btn' onClick={() => onOpenField && onOpenField(p.id)}>Field History</button>
                 </Popup>
               </Polygon>
             ))}
@@ -218,7 +263,8 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
           <LayerGroup>
             {mobs.map(m => {
               const poly = m.paddock_id ? paddockPolys.get(m.paddock_id) : undefined
-              const pos = poly && poly.length ? (centroidLatLng(poly) as LatLngExpression) : (center as LatLngExpression)
+              const posLL = mobPositions.get(m.id) || (poly && poly.length ? (centroidLatLng(poly) as LatLngTuple) : (center as LatLngTuple))
+              const pos = posLL as LatLngExpression
               const move = lastMoveToPaddock(m.id, m.paddock_id ?? null)
               const movedDate = move?.timestamp
               const days = daysSince(movedDate)
@@ -233,6 +279,9 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
                     Count: {m.count}
                     <br/>Paddock: {paddockName ?? 'Unassigned'}
                     <br/>Moved: {formatDate(movedDate)}{typeof days === 'number' ? (<><br/>Days on paddock: {days}</>) : null}
+                    <div style={{ marginTop: 6 }}>
+                      <button className='control-btn' onClick={() => onOpenMobHistory && onOpenMobHistory(m.id)}>History</button>
+                    </div>
                   </Popup>
                 </Marker>
               )
@@ -274,6 +323,32 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
         )}
       </LayersControl>
       <Controls />
+      <FitToPaddocks />
+      {/* Crop legend */}
+      <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 900 }}>
+        {!legendOpen ? (
+          <button className='control-btn' onClick={() => setLegendOpen(true)}>Legend</button>
+        ) : (
+          <div className='map-legend panel' style={{ padding: 8, minWidth: 180 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <strong style={{ fontSize: 12 }}>Crop Legend</strong>
+              <button className='control-btn' onClick={() => setLegendOpen(false)}>Close</button>
+            </div>
+            {Array.from(new Map(paddocks
+              .filter(p => (p.crop_type && p.crop_color))
+              .map(p => [p.crop_type as string, p.crop_color as string])
+            ).entries()).map(([type, color]) => (
+              <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, margin: '4px 0' }}>
+                <span style={{ width: 12, height: 12, borderRadius: 2, background: color as string, display: 'inline-block', border: '1px solid #e5e7eb' }} />
+                <span>{type}</span>
+              </div>
+            ))}
+            {paddocks.filter(p=>p.crop_type && p.crop_color).length === 0 && (
+              <div className='muted' style={{ fontSize: 12 }}>No crop types set</div>
+            )}
+          </div>
+        )}
+      </div>
     </MapContainer>
   )
 }

@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select
 from ..v1_deps import get_session
 from ...core.models import (
     SprayRecord, SowingRecord, FertiliserRecord, CutRecord, HarvestRecord
 )
 from ...core.schemas import (
-    SprayRecordCreate, SprayRecordOut,
-    SowingRecordCreate, SowingRecordOut,
-    FertiliserRecordCreate, FertiliserRecordOut,
-    CutRecordCreate, CutRecordOut,
-    HarvestRecordCreate, HarvestRecordOut,
+    SprayRecordCreate, SprayRecordOut, SprayRecordUpdate,
+    SowingRecordCreate, SowingRecordOut, SowingRecordUpdate,
+    FertiliserRecordCreate, FertiliserRecordOut, FertiliserRecordUpdate,
+    CutRecordCreate, CutRecordOut, CutRecordUpdate,
+    HarvestRecordCreate, HarvestRecordOut, HarvestRecordUpdate,
 )
 
 router = APIRouter()
@@ -30,6 +30,26 @@ async def create_spraying(data: SprayRecordCreate, session: get_session):
     await session.refresh(rec)
     return rec
 
+@router.patch("/spraying/{rec_id}", response_model=SprayRecordOut)
+async def update_spraying(rec_id: int, data: SprayRecordUpdate, session: get_session):
+    rec = await session.get(SprayRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(rec, field, value)
+    await session.commit()
+    await session.refresh(rec)
+    return rec
+
+@router.delete("/spraying/{rec_id}", status_code=204)
+async def delete_spraying(rec_id: int, session: get_session):
+    rec = await session.get(SprayRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    await session.delete(rec)
+    await session.commit()
+    return None
+
 @router.get("/sowing", response_model=list[SowingRecordOut])
 async def list_sowing(paddock_id: int | None = Query(None), session: get_session = None):
     stmt = select(SowingRecord)
@@ -45,6 +65,26 @@ async def create_sowing(data: SowingRecordCreate, session: get_session):
     await session.commit()
     await session.refresh(rec)
     return rec
+
+@router.patch("/sowing/{rec_id}", response_model=SowingRecordOut)
+async def update_sowing(rec_id: int, data: SowingRecordUpdate, session: get_session):
+    rec = await session.get(SowingRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(rec, field, value)
+    await session.commit()
+    await session.refresh(rec)
+    return rec
+
+@router.delete("/sowing/{rec_id}", status_code=204)
+async def delete_sowing(rec_id: int, session: get_session):
+    rec = await session.get(SowingRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    await session.delete(rec)
+    await session.commit()
+    return None
 
 @router.get("/fertiliser", response_model=list[FertiliserRecordOut])
 async def list_fertiliser(paddock_id: int | None = Query(None), session: get_session = None):
@@ -62,6 +102,26 @@ async def create_fertiliser(data: FertiliserRecordCreate, session: get_session):
     await session.refresh(rec)
     return rec
 
+@router.patch("/fertiliser/{rec_id}", response_model=FertiliserRecordOut)
+async def update_fertiliser(rec_id: int, data: FertiliserRecordUpdate, session: get_session):
+    rec = await session.get(FertiliserRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(rec, field, value)
+    await session.commit()
+    await session.refresh(rec)
+    return rec
+
+@router.delete("/fertiliser/{rec_id}", status_code=204)
+async def delete_fertiliser(rec_id: int, session: get_session):
+    rec = await session.get(FertiliserRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    await session.delete(rec)
+    await session.commit()
+    return None
+
 @router.get("/cut", response_model=list[CutRecordOut])
 async def list_cut(paddock_id: int | None = Query(None), session: get_session = None):
     stmt = select(CutRecord)
@@ -77,6 +137,26 @@ async def create_cut(data: CutRecordCreate, session: get_session):
     await session.commit()
     await session.refresh(rec)
     return rec
+
+@router.patch("/cut/{rec_id}", response_model=CutRecordOut)
+async def update_cut(rec_id: int, data: CutRecordUpdate, session: get_session):
+    rec = await session.get(CutRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(rec, field, value)
+    await session.commit()
+    await session.refresh(rec)
+    return rec
+
+@router.delete("/cut/{rec_id}", status_code=204)
+async def delete_cut(rec_id: int, session: get_session):
+    rec = await session.get(CutRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    await session.delete(rec)
+    await session.commit()
+    return None
 
 @router.get("/harvest", response_model=list[HarvestRecordOut])
 async def list_harvest(paddock_id: int | None = Query(None), session: get_session = None):
@@ -94,3 +174,22 @@ async def create_harvest(data: HarvestRecordCreate, session: get_session):
     await session.refresh(rec)
     return rec
 
+@router.patch("/harvest/{rec_id}", response_model=HarvestRecordOut)
+async def update_harvest(rec_id: int, data: HarvestRecordUpdate, session: get_session):
+    rec = await session.get(HarvestRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(rec, field, value)
+    await session.commit()
+    await session.refresh(rec)
+    return rec
+
+@router.delete("/harvest/{rec_id}", status_code=204)
+async def delete_harvest(rec_id: int, session: get_session):
+    rec = await session.get(HarvestRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    await session.delete(rec)
+    await session.commit()
+    return None

@@ -31,6 +31,9 @@ h3 { font-size: 14px; }
 .sidebar-header__subtitle { margin-top: 2px; font-size: 12px; opacity: 0.85; }
 
 .section-title { margin: 16px 0 8px; color: var(--brand); font-weight: 700; font-size: 13px; }
+.sidebar-tabs { display: flex; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--border); background: #fff; position: sticky; top: 0; z-index: 1; }
+.sidebar-tab { padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px; background: #fff; cursor: pointer; font-size: 12px; }
+.sidebar-tab--active { background: var(--brand-accent); color: #fff; border-color: var(--brand-accent); }
 
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
 
@@ -99,6 +102,9 @@ h3 { font-size: 14px; }
 @media (max-width: 768px) {
   .topbar { display: flex; }
 }
+
+/* Map Legend */
+.map-legend { max-height: 240px; overflow: auto; }
 
 /* Hide heavy sections on small screens */
 .section-desktop-only {}

@@ -128,6 +128,11 @@ class RamOut(BaseModel):
     class Config:
         from_attributes = True
 
+class RamUpdate(BaseModel):
+    name: Optional[str] = None
+    tag_id: Optional[str] = None
+    notes: Optional[str] = None
+
 class JoiningRecordCreate(BaseModel):
     mob_id: int
     ram_id: int
@@ -146,6 +151,14 @@ class JoiningRecordOut(BaseModel):
     notes: Optional[str] = None
     class Config:
         from_attributes = True
+
+class JoiningRecordUpdate(BaseModel):
+    mob_id: Optional[int] = None
+    ram_id: Optional[int] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    notes: Optional[str] = None
 
 class MarkingRecordCreate(BaseModel):
     mob_id: int
@@ -223,6 +236,13 @@ class SprayRecordOut(BaseModel):
     class Config:
         from_attributes = True
 
+class SprayRecordUpdate(BaseModel):
+    paddock_id: Optional[int] = None
+    date: Optional[datetime] = None
+    chemical: Optional[str] = None
+    rate: Optional[str] = None
+    notes: Optional[str] = None
+
 class SowingRecordCreate(BaseModel):
     paddock_id: int
     date: Optional[datetime] = None
@@ -239,6 +259,13 @@ class SowingRecordOut(BaseModel):
     notes: Optional[str] = None
     class Config:
         from_attributes = True
+
+class SowingRecordUpdate(BaseModel):
+    paddock_id: Optional[int] = None
+    date: Optional[datetime] = None
+    seed: Optional[str] = None
+    rate: Optional[str] = None
+    notes: Optional[str] = None
 
 class FertiliserRecordCreate(BaseModel):
     paddock_id: int
@@ -257,6 +284,13 @@ class FertiliserRecordOut(BaseModel):
     class Config:
         from_attributes = True
 
+class FertiliserRecordUpdate(BaseModel):
+    paddock_id: Optional[int] = None
+    date: Optional[datetime] = None
+    product: Optional[str] = None
+    rate: Optional[str] = None
+    notes: Optional[str] = None
+
 class CutRecordCreate(BaseModel):
     paddock_id: int
     date: Optional[datetime] = None
@@ -269,6 +303,11 @@ class CutRecordOut(BaseModel):
     notes: Optional[str] = None
     class Config:
         from_attributes = True
+
+class CutRecordUpdate(BaseModel):
+    paddock_id: Optional[int] = None
+    date: Optional[datetime] = None
+    notes: Optional[str] = None
 
 class HarvestRecordCreate(BaseModel):
     paddock_id: int
@@ -286,3 +325,10 @@ class HarvestRecordOut(BaseModel):
     notes: Optional[str] = None
     class Config:
         from_attributes = True
+
+class HarvestRecordUpdate(BaseModel):
+    paddock_id: Optional[int] = None
+    date: Optional[datetime] = None
+    kind: Optional[str] = None
+    amount: Optional[str] = None
+    notes: Optional[str] = None

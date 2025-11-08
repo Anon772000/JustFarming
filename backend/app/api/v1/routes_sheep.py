@@ -6,8 +6,8 @@ from ...core.models import (
     Ram, JoiningRecord, MarkingRecord, WeaningRecord, FlyTreatmentRecord, FootParingRecord
 )
 from ...core.schemas import (
-    RamCreate, RamOut,
-    JoiningRecordCreate, JoiningRecordOut,
+    RamCreate, RamOut, RamUpdate,
+    JoiningRecordCreate, JoiningRecordOut, JoiningRecordUpdate,
     MarkingRecordCreate, MarkingRecordOut,
     WeaningRecordCreate, WeaningRecordOut,
     FlyTreatmentRecordCreate, FlyTreatmentRecordOut,
@@ -29,6 +29,26 @@ async def create_ram(data: RamCreate, session: get_session):
     await session.commit()
     await session.refresh(r)
     return r
+
+@router.patch("/rams/{ram_id}", response_model=RamOut)
+async def update_ram(ram_id: int, data: RamUpdate, session: get_session):
+    r = await session.get(Ram, ram_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Ram not found")
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(r, field, value)
+    await session.commit()
+    await session.refresh(r)
+    return r
+
+@router.delete("/rams/{ram_id}", status_code=204)
+async def delete_ram(ram_id: int, session: get_session):
+    r = await session.get(Ram, ram_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Ram not found")
+    await session.delete(r)
+    await session.commit()
+    return None
 
 # Joining
 @router.get("/joining", response_model=list[JoiningRecordOut])
@@ -58,6 +78,31 @@ async def create_joining(data: JoiningRecordCreate, session: get_session):
     await session.commit()
     await session.refresh(rec)
     return rec
+
+@router.patch("/joining/{rec_id}", response_model=JoiningRecordOut)
+async def update_joining(rec_id: int, data: JoiningRecordUpdate, session: get_session):
+    # Reuse create schema but treat all fields as optional for patch
+    rec = await session.get(JoiningRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Joining record not found")
+    payload = data.dict(exclude_unset=True)
+    # handle due date default if start changed and due not provided
+    if 'start_date' in payload and 'due_date' not in payload and payload['start_date'] is not None:
+        payload['due_date'] = (payload['start_date'] or rec.start_date) + timedelta(days=147)
+    for field, value in payload.items():
+        setattr(rec, field, value)
+    await session.commit()
+    await session.refresh(rec)
+    return rec
+
+@router.delete("/joining/{rec_id}", status_code=204)
+async def delete_joining(rec_id: int, session: get_session):
+    rec = await session.get(JoiningRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Joining record not found")
+    await session.delete(rec)
+    await session.commit()
+    return None
 
 # Marking
 @router.get("/marking", response_model=list[MarkingRecordOut])
@@ -126,4 +171,3 @@ async def create_foot_paring(data: FootParingRecordCreate, session: get_session)
     await session.commit()
     await session.refresh(rec)
     return rec
-
