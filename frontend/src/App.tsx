@@ -17,7 +17,7 @@ const cropPalette: Record<string, string> = {
   'Soybeans': '#4CAF50',
   'Sorghum': '#B74E25',
   'Lucerne / Alfalfa': '#A4DE02',
-  'Pasture / Mixed Grazing': '#2E7D32',
+  'Pasture': '#2E7D32',
   'Fallow / Bare Soil': '#8B5A2B',
   'Vegetables (general)': '#3DBF8A',
   'Orchards / Trees': '#556B2F',
@@ -51,6 +51,7 @@ export default function App() {
   })
   useEffect(() => { localStorage.setItem('mobTags', JSON.stringify(mobTags)) }, [mobTags])
   const [rams, setRams] = useState<Ram[]>([])
+  const [moveMobId, setMoveMobId] = useState<number | null>(null)
   const [fieldPaddockId, setFieldPaddockId] = useState<number | null>(null)
   const [selectedPaddockId, setSelectedPaddockId] = useState<number | ''>('')
   const [cropType, setCropType] = useState('')
@@ -136,8 +137,8 @@ export default function App() {
         <button className="hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><span /></button>
         <div className="topbar__title">JustFarming</div>
       </div>
-      {sidebarOpen && <div className="sidebar-scrim" onClick={() => setSidebarOpen(false)} />}
-      <div className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''}`} style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
+      {false && sidebarOpen && <div className="sidebar-scrim" onClick={() => setSidebarOpen(false)} />}
+      <div className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''}`} style={{ display: 'none' }}>
         <div className="sidebar-header">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h2 className="sidebar-header__title" style={{ margin: 0 }}>JustFarming</h2>
@@ -223,7 +224,7 @@ export default function App() {
                       if (cropPalette[t]) setCropColor(cropPalette[t])
                     }}
                   >
-                    <option value="">Crop typeï¿½</option>
+                    <option value="">Crop type?</option>
                     {Object.keys(cropPalette).map(k => (
                       <option key={k} value={k}>{k}</option>
                     ))}
@@ -270,7 +271,7 @@ export default function App() {
                   }}>+ Harvest</button>
                 </div>
                 <div style={{ marginTop: 8 }}>
-                  <button className="btn" onClick={()=> setManageOpsOpen(true)}>Manage Operationsï¿½</button>
+                  <button className="btn" onClick={()=> setManageOpsOpen(true)}>Manage Operations?</button>
                 </div>
               </div>
             </>
@@ -323,7 +324,7 @@ export default function App() {
                   </select>
                   <select
                     className="select"
-                    value={mobTypes[m.id] || 'cow'}
+                    value={mobTypes[m.id] || ''}
                     onChange={e => setMobTypes(prev => ({ ...prev, [m.id]: e.target.value }))}
                   >
                     <option value="cow">Cattle</option>
@@ -371,7 +372,7 @@ export default function App() {
                           })
                         }}
                         aria-label="Remove tag"
-                      >ï¿½</button>
+                      >?</button>
                     </span>
                   ))}
                 </div>
@@ -430,8 +431,62 @@ export default function App() {
         </div>
       </div>
       <div style={{ position: 'relative' }}>
-        <MapView paddocks={paddocks} mobs={mobs} movements={movements} mobTypes={mobTypes} selectedMobId={historyMobId} mobDOBs={mobDOBs} onOpenMenu={() => setSidebarOpen(true)} onOpenField={(id)=> setFieldPaddockId(id)} onOpenMobHistory={(id)=> setHistoryMobId(id)} />
+        <MapView
+          paddocks={paddocks}
+          mobs={mobs}
+          movements={movements}
+          mobTypes={mobTypes}
+          selectedMobId={historyMobId}
+          mobDOBs={mobDOBs}
+          onOpenMenu={() => setSidebarOpen(true)}
+          onOpenField={(id)=> setFieldPaddockId(id)}
+          onOpenMobHistory={(id)=> setHistoryMobId(id)}
+          moveMobId={moveMobId}
+          onRequestMove={(id)=> setMoveMobId(id)}
+          onSelectMoveTarget={async (mobId, pid) => { await transferMob(mobId, pid); setMoveMobId(null) }}
+        />
       </div>
+
+      {/* Full-screen Menu Overlay */}
+      {sidebarOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: '#fff', zIndex: 1200, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ fontWeight: 700 }}>Menu</div>
+            <button className='btn' onClick={()=> setSidebarOpen(false)}>Close</button>
+          </div>
+          <div style={{ padding: 16, display: 'grid', gap: 16 }}>
+            <div>
+              <h3 className='section-title' style={{ marginTop: 0 }}>Quick Actions</h3>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button className='btn' onClick={()=> setManageOpsOpen(true)}>Manage Operations…</button>
+              </div>
+            </div>
+
+            <div>
+              <h3 className='section-title'>Import KML</h3>
+              <KmlUploader onUploaded={async ()=>{ await load(); alert('KML imported'); }} />
+            </div>
+
+            <div>
+              <h3 className='section-title'>Settings</h3>
+              <div className='panel form-compact' style={{ padding: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <label className='muted' style={{ fontSize: 12 }}>Weaning offset (days)</label>
+                    <input className='input' type='number' min={0} value={weaningOffsetDays as any} onChange={e=> setWeaningOffsetDays(Math.max(0, parseInt(e.target.value||'0')))} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'end' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input type='checkbox' checked={legendOnlyUsed} onChange={e=> setLegendOnlyUsed(e.target.checked)} />
+                      <span className='muted' style={{ fontSize: 12 }}>Legend: only show used crop types</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {historyMobId !== null && (
         <HistoryModal
@@ -481,7 +536,8 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
   const [worming, setWorming] = useState<any[]>([])
   const [footbath, setFootbath] = useState<any[]>([])
   // Sheep-specific
-  const [rams, setRams] = useState<any[]>([])
+  const [rams, setRams] = useState<any[]
+  const [moveMobId, setMoveMobId] = useState<number | null>(null)>([])
   const [joining, setJoining] = useState<any[]>([])
   const [marking, setMarking] = useState<any[]>([])
   const [weaning, setWeaning] = useState<any[]>([])
@@ -560,7 +616,7 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
       <div className="panel" style={{ width: 860, maxHeight: '85vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <h3 className="section-title" style={{ margin: 0 }}>History ï¿½ {mob.name}</h3>
+          <h3 className="section-title" style={{ margin: 0 }}>History ? {mob.name}</h3>
           <button className="btn" onClick={onClose}>Close</button>
         </div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
@@ -609,7 +665,7 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
                 <h4 className="section-title">History</h4>
                 {worming.map((r:any)=> (
                   <div key={r.id} className="muted" style={{ fontSize: 12 }}>
-                    {new Date(r.date).toLocaleDateString()} ï¿½ {r.drug}{r.worm_count!=null?` (count ${r.worm_count})`:''} {r.notes?`ï¿½ ${r.notes}`:''}
+                    {new Date(r.date).toLocaleDateString()} ? {r.drug}{r.worm_count!=null?` (count ${r.worm_count})`:''} {r.notes?`? ${r.notes}`:''}
                   </div>
                 ))}
               </div>
@@ -625,7 +681,7 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
                 <h4 className="section-title">History</h4>
                 {footbath.map((r:any)=> (
                   <div key={r.id} className="muted" style={{ fontSize: 12 }}>
-                    {new Date(r.date).toLocaleDateString()} ï¿½ {r.solution}{r.concentration?` (${r.concentration})`:''} {r.notes?`ï¿½ ${r.notes}`:''}
+                    {new Date(r.date).toLocaleDateString()} ? {r.solution}{r.concentration?` (${r.concentration})`:''} {r.notes?`? ${r.notes}`:''}
                   </div>
                 ))}
               </div>
@@ -787,9 +843,9 @@ function RamsTab({ joining, rams, mobId, refresh, weaningOffsetDays }: { joining
                 <div><strong>Ram:</strong> {r ? r.name : `#${j.ram_id}`}{r?.tag_id?` (${r.tag_id})`:''}</div>
                 <div className="muted" style={{ fontSize: 12 }}>
                   Start: {new Date(j.start_date).toLocaleDateString()}
-                  {j.due_date?` ï¿½ Due: ${new Date(j.due_date).toLocaleDateString()}`:''}
-                  {j.end_date?` ï¿½ End: ${new Date(j.end_date).toLocaleDateString()}`:''}
-                  {j.notes?` ï¿½ ${j.notes}`:''}
+                  {j.due_date?` ? Due: ${new Date(j.due_date).toLocaleDateString()}`:''}
+                  {j.end_date?` ? End: ${new Date(j.end_date).toLocaleDateString()}`:''}
+                  {j.notes?` ? ${j.notes}`:''}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
@@ -904,9 +960,9 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
           </select>
           <select className='select' value={paddockFilter as any} onChange={e=>setPaddockFilter(e.target.value?parseInt(e.target.value):'')}>
             <option value=''>All paddocks</option>
-            {paddocks.map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
+            {[...paddocks].sort((a,b)=>a.name.localeCompare(b.name)).map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <input className='input' placeholder='Filter by product/chemicalï¿½' value={query} onChange={e=>setQuery(e.target.value)} />
+          <input className='input' placeholder='Filter by product/chemical?' value={query} onChange={e=>setQuery(e.target.value)} />
         </div>
         <div>
           {timeline.map((e, idx) => {
@@ -917,7 +973,7 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr auto', gap: 8, alignItems: 'center' }}>
                   <div>
                     <strong>{e.type}</strong>
-                    <div className='muted' style={{ fontSize: 12 }}>{new Date(e.date).toLocaleDateString()} ï¿½ {nameOf(e.data.paddock_id)}</div>
+                    <div className='muted' style={{ fontSize: 12 }}>{new Date(e.date).toLocaleDateString()} ? {nameOf(e.data.paddock_id)}</div>
                   </div>
                   {!isEdit ? (
                     <div className='muted' style={{ fontSize: 13 }}>
@@ -1073,7 +1129,7 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
           <button className="btn" onClick={onClose}>Close</button>
         </div>
         <div className="muted" style={{ marginBottom: 8, fontSize: 13 }}>
-          Area: {paddock.area_ha} ha{paddock.crop_type?` ï¿½ Type: ${paddock.crop_type}`:''}{typeof restDays === 'number'?` ï¿½ Rest: ${restDays} days`:''}
+          Area: {paddock.area_ha} ha{paddock.crop_type?` ? Type: ${paddock.crop_type}`:''}{typeof restDays === 'number'?` ? Rest: ${restDays} days`:''}
         </div>
         <div className="form-compact" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
           <input className="input" type="date" value={start} onChange={e=>setStart(e.target.value)} />
@@ -1086,7 +1142,7 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
             <option value="Cut">Cut</option>
             <option value="Harvest">Harvest</option>
           </select>
-          <input className="input" placeholder="Filter by product/chemicalï¿½" value={query} onChange={e=>setQuery(e.target.value)} />
+          <input className="input" placeholder="Filter by product/chemical?" value={query} onChange={e=>setQuery(e.target.value)} />
         </div>
         <div style={{ marginBottom: 10 }}>
           <strong>Mobs in paddock:</strong> {mobsHere.length === 0 ? 'None' : mobsHere.map(m=>`${m.name} (${m.count})`).join(', ')}

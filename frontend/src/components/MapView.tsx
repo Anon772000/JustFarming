@@ -37,7 +37,7 @@ function makeEmojiIcon(emoji: string): DivIcon {
   return L.divIcon({ className: 'mob-marker', html: emoji, iconSize: [24, 24], iconAnchor: [12, 12] })
 }
 
-export default function MapView({ paddocks, mobs, movements, mobTypes, selectedMobId, mobDOBs, onOpenMenu, onOpenField, onOpenMobHistory }: { paddocks: Paddock[]; mobs: Mob[]; movements: Movement[]; mobTypes: MobTypes; selectedMobId?: number | null; mobDOBs?: Record<number, string>; onOpenMenu?: () => void; onOpenField?: (paddockId: number) => void; onOpenMobHistory?: (mobId: number) => void }) {
+export default function MapView({ paddocks, mobs, movements, mobTypes, selectedMobId, mobDOBs, onOpenMenu, onOpenField, onOpenMobHistory, moveMobId, onRequestMove, onSelectMoveTarget }: { paddocks: Paddock[]; mobs: Mob[]; movements: Movement[]; mobTypes: MobTypes; selectedMobId?: number | null; mobDOBs?: Record<number, string>; onOpenMenu?: () => void; onOpenField?: (paddockId: number) => void; onOpenMobHistory?: (mobId: number) => void; moveMobId?: number | null; onRequestMove?: (mobId: number) => void; onSelectMoveTarget?: (mobId: number, paddockId: number) => void }) {
   const center: LatLngTuple = [-31.9, 148.6]
   const [userPos, setUserPos] = useState<LatLngTuple | null>(null)
   const [accuracy, setAccuracy] = useState<number | null>(null)
@@ -52,7 +52,7 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
     'Soybeans': '#4CAF50',
     'Sorghum': '#B74E25',
     'Lucerne / Alfalfa': '#A4DE02',
-    'Pasture / Mixed Grazing': '#2E7D32',
+    'Pasture': '#2E7D32',
     'Fallow / Bare Soil': '#8B5A2B',
     'Vegetables (general)': '#3DBF8A',
     'Orchards / Trees': '#556B2F',
@@ -268,13 +268,24 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
         <LayersControl.Overlay checked name='Paddocks'>
           <LayerGroup>
             {paddocks.map(p => (
-              <Polygon key={p.id} positions={parsePolygon(p.polygon_geojson)} pathOptions={{ color: p.crop_color || '#198754', fillColor: p.crop_color || '#198754', fillOpacity: 0.25 }} eventHandlers={{ click: () => onOpenField && onOpenField(p.id) }}>
+              <Polygon
+                key={p.id}
+                positions={parsePolygon(p.polygon_geojson)}
+                pathOptions={{ color: p.crop_color || '#198754', fillColor: p.crop_color || '#198754', fillOpacity: 0.25, weight: moveMobId ? 3 : 1 }}
+                eventHandlers={{
+                  click: () => {
+                    if (moveMobId && onSelectMoveTarget) onSelectMoveTarget(moveMobId, p.id)
+                    else if (onOpenField) onOpenField(p.id)
+                  }
+                }}
+              >
                 <Popup>
                   <strong>{p.name}</strong><br/>
                   Area: {p.area_ha} ha
                   {p.crop_type ? (<><br/>Type: {p.crop_type}</>) : null}
                   <br/>
-                  <button className='control-btn' onClick={() => onOpenField && onOpenField(p.id)}>Field History</button>
+                  {!moveMobId && <button className='control-btn' onClick={() => onOpenField && onOpenField(p.id)}>Field History</button>}
+                  {moveMobId && <div className='muted' style={{ fontSize: 12 }}>Tap to move mob here</div>}
                 </Popup>
               </Polygon>
             ))}
@@ -303,6 +314,7 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
                     <br/>Moved: {formatDate(movedDate)}{typeof days === 'number' ? (<><br/>Days on paddock: {days}</>) : null}
                     <div style={{ marginTop: 6 }}>
                       <button className='control-btn' onClick={() => onOpenMobHistory && onOpenMobHistory(m.id)}>History</button>
+                      <button className='control-btn' onClick={() => onRequestMove && onRequestMove(m.id)} style={{ marginLeft: 6 }}>Move Mob</button>
                     </div>
                   </Popup>
                 </Marker>
@@ -346,6 +358,11 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
       </LayersControl>
       <Controls />
       <FitToPaddocks />
+      {moveMobId && (
+        <div className='map-controls' style={{ left: '50%', transform: 'translateX(-50%)', bottom: 12 }}>
+          <div className='panel' style={{ padding: 8, fontSize: 12 }}>Moving mob: tap a paddock to select destination</div>
+        </div>
+      )}
       {/* Crop legend */}
       <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 900 }}>
         {!legendOpen ? (
