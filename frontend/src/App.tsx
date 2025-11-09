@@ -582,6 +582,7 @@ export default function App() {
           mobs={mobs}
           movements={movements}
           mobTypes={mobTypes}
+          cropPalette={cropPalette}
           selectedMobId={historyMobId}
           mobDOBs={mobDOBs}
           onOpenMenu={() => setSidebarOpen(true)}
@@ -1064,8 +1065,9 @@ function HistoryModal({ mob, paddocks, movements, onClose, mode }: { mob: Mob; p
         )}
 
         {tab === 'health' && (
-          <div className="form-compact" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
+          <div className="container-fluid">
+            <div className='row g-3'>
+              <div className='col-12 col-md-6'>
               <h4 className="section-title">Add Worming</h4>
               <input className="input" placeholder="Drug" value={drug} onChange={e=>setDrug(e.target.value)} style={{ marginBottom: 6 }} />
               <input className="input" type="number" placeholder="Worm count" value={wormCount as any} onChange={e=>setWormCount(e.target.value === '' ? '' : parseInt(e.target.value))} style={{ marginBottom: 6 }} />
@@ -1080,8 +1082,8 @@ function HistoryModal({ mob, paddocks, movements, onClose, mode }: { mob: Mob; p
                   </div>
                 ))}
               </div>
-            </div>
-            <div>
+              </div>
+              <div className='col-12 col-md-6'>
               <h4 className="section-title">Add Footbath</h4>
               <input className="input" placeholder="Solution" value={solution} onChange={e=>setSolution(e.target.value)} style={{ marginBottom: 6 }} />
               <input className="input" placeholder="Concentration" value={conc} onChange={e=>setConc(e.target.value)} style={{ marginBottom: 6 }} />
@@ -1096,12 +1098,12 @@ function HistoryModal({ mob, paddocks, movements, onClose, mode }: { mob: Mob; p
                   </div>
                 ))}
               </div>
-            </div>
-            <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-              <h4 className="section-title">Sheep</h4>
-              <div className="panel" style={{ padding: 8 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <div>
+              </div>
+              <div className='col-12'>
+                <h4 className="section-title">Sheep</h4>
+                <div className="panel" style={{ padding: 8 }}>
+                  <div className='row g-2'>
+                    <div className='col-12 col-lg-6'>
                     <h5 className="section-title">Joining</h5>
                     <select className="select" value={ramId} onChange={e=>setRamId(e.target.value)} style={{ marginBottom: 6 }}>
                       <option value="">Select ram</option>
@@ -1120,8 +1122,8 @@ function HistoryModal({ mob, paddocks, movements, onClose, mode }: { mob: Mob; p
                         </div>
                       ))}
                     </div>
-                  </div>
-                  <div>
+                    </div>
+                    <div className='col-12 col-lg-6'>
                     <h5 className="section-title">Marking</h5>
                     <input className="input" type="date" value={markDate} onChange={e=>setMarkDate(e.target.value)} style={{ marginBottom: 6 }} />
                     <input className="input" placeholder="Notes" value={markNotes} onChange={e=>setMarkNotes(e.target.value)} style={{ marginBottom: 6 }} />
@@ -1136,8 +1138,8 @@ function HistoryModal({ mob, paddocks, movements, onClose, mode }: { mob: Mob; p
                         </div>
                       ))}
                     </div>
-                  </div>
-                  <div>
+                    </div>
+                    <div className='col-12 col-lg-6'>
                     <h5 className="section-title">Weaning</h5>
                     <input className="input" type="date" value={weanDate} onChange={e=>setWeanDate(e.target.value)} style={{ marginBottom: 6 }} />
                     <input className="input" type="number" placeholder="Weaned count" value={weanCount as any} onChange={e=>setWeanCount(e.target.value===''?'':parseInt(e.target.value))} style={{ marginBottom: 6 }} />
@@ -1153,8 +1155,8 @@ function HistoryModal({ mob, paddocks, movements, onClose, mode }: { mob: Mob; p
                         </div>
                       ))}
                     </div>
-                  </div>
-                  <div>
+                    </div>
+                    <div className='col-12 col-lg-6'>
                     <h5 className="section-title">Fly Treatment</h5>
                     <input className="input" placeholder="Chemical" value={flyChem} onChange={e=>setFlyChem(e.target.value)} style={{ marginBottom: 6 }} />
                     <input className="input" placeholder="Rate" value={flyRate} onChange={e=>setFlyRate(e.target.value)} style={{ marginBottom: 6 }} />
@@ -1171,8 +1173,8 @@ function HistoryModal({ mob, paddocks, movements, onClose, mode }: { mob: Mob; p
                         </div>
                       ))}
                     </div>
-                  </div>
-                  <div>
+                    </div>
+                    <div className='col-12 col-lg-6'>
                     <h5 className="section-title">Foot Paring</h5>
                     <input className="input" type="date" value={fpDate} onChange={e=>setFpDate(e.target.value)} style={{ marginBottom: 6 }} />
                     <input className="input" placeholder="Notes" value={fpNotes} onChange={e=>setFpNotes(e.target.value)} style={{ marginBottom: 6 }} />
@@ -1186,6 +1188,7 @@ function HistoryModal({ mob, paddocks, movements, onClose, mode }: { mob: Mob; p
                           {new Date(r.date).toLocaleDateString()} {r.notes?`- ${r.notes}`:''}
                         </div>
                       ))}
+                    </div>
                     </div>
                   </div>
                 </div>

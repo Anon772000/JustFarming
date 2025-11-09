@@ -37,34 +37,13 @@ function makeEmojiIcon(emoji: string): DivIcon {
   return L.divIcon({ className: 'mob-marker', html: emoji, iconSize: [24, 24], iconAnchor: [12, 12] })
 }
 
-export default function MapView({ paddocks, mobs, movements, mobTypes, selectedMobId, mobDOBs, onOpenMenu, onOpenField, onOpenMobHistory, moveMobId, onRequestMove, onSelectMoveTarget, onCancelMove }: { paddocks: Paddock[]; mobs: Mob[]; movements: Movement[]; mobTypes: MobTypes; selectedMobId?: number | null; mobDOBs?: Record<number, string>; onOpenMenu?: () => void; onOpenField?: (paddockId: number) => void; onOpenMobHistory?: (mobId: number) => void; moveMobId?: number | null; onRequestMove?: (mobId: number) => void; onSelectMoveTarget?: (mobId: number, paddockId: number) => void; onCancelMove?: () => void }) {
+export default function MapView({ paddocks, mobs, movements, mobTypes, selectedMobId, mobDOBs, onOpenMenu, onOpenField, onOpenMobHistory, moveMobId, onRequestMove, onSelectMoveTarget, onCancelMove, cropPalette }: { paddocks: Paddock[]; mobs: Mob[]; movements: Movement[]; mobTypes: MobTypes; selectedMobId?: number | null; mobDOBs?: Record<number, string>; onOpenMenu?: () => void; onOpenField?: (paddockId: number) => void; onOpenMobHistory?: (mobId: number) => void; moveMobId?: number | null; onRequestMove?: (mobId: number) => void; onSelectMoveTarget?: (mobId: number, paddockId: number) => void; onCancelMove?: () => void; cropPalette: Record<string, string> }) {
   const center: LatLngTuple = [-31.9, 148.6]
   const [userPos, setUserPos] = useState<LatLngTuple | null>(null)
   const [accuracy, setAccuracy] = useState<number | null>(null)
   const [gpsOn, setGpsOn] = useState<boolean>(true)
   const [legendOpen, setLegendOpen] = useState<boolean>(false)
   const [legendOnlyUsed, setLegendOnlyUsed] = useState<boolean>(() => (localStorage.getItem('legendOnlyUsed') === 'true'))
-  const palette: Record<string, string> = {
-  'Wheat': '#E5C07B',
-  'Barley': '#D4B157',
-  'Corn': '#B5E550',
-  'Maize': '#9ED93C',
-  'Canola': '#FFD700',
-  'Rapeseed': '#FFC200',
-  'Cotton': '#D9D9D9',
-  'Soybeans': '#4CAF50',
-  'Sorghum': '#B74E25',
-  'Lucerne': '#A4DE02',
-  'Alfalfa': '#8BC34A',
-  'Pasture': '#2E7D32',
-  'Fallow': '#8B5A2B',
-  'Bare Soil': '#6D4C41',
-  'Vegetables': '#3DBF8A',
-  'Orchards': '#556B2F',
-  'Trees': '#33691E',
-  'Vineyards': '#6B4C9A',
-  'Grapes': '#5E35B1',
-}
   useEffect(() => {
     const handler = (e: StorageEvent) => {
       if (e.key === 'legendOnlyUsed') setLegendOnlyUsed(e.newValue === 'true')
@@ -385,7 +364,7 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
             {(legendOnlyUsed ? Array.from(new Map(paddocks
               .filter(p => (p.crop_type && p.crop_color))
               .map(p => [p.crop_type as string, p.crop_color as string])
-            ).entries()) : Object.entries(palette)).map(([type, color]) => (
+            ).entries()) : Object.entries(cropPalette)).map(([type, color]) => (
               <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, margin: '4px 0' }}>
                 <span style={{ width: 12, height: 12, borderRadius: 2, background: color as string, display: 'inline-block', border: '1px solid #e5e7eb' }} />
                 <span>{type}</span>
