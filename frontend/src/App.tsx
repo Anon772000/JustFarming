@@ -73,6 +73,11 @@ export default function App() {
   const [legendOnlyUsed, setLegendOnlyUsed] = useState<boolean>(() => localStorage.getItem('legendOnlyUsed') === 'true')
   useEffect(() => { localStorage.setItem('weaningOffsetDays', String(weaningOffsetDays)) }, [weaningOffsetDays])
   useEffect(() => { localStorage.setItem('legendOnlyUsed', legendOnlyUsed ? 'true' : 'false') }, [legendOnlyUsed])
+  const [toast, setToast] = useState<string | null>(null)
+  const showToast = (msg: string) => {
+    setToast(msg)
+    window.setTimeout(() => setToast(null), 2500)
+  }
   // Rams edit state
   const [editingRamId, setEditingRamId] = useState<number | null>(null)
   const [editRamName, setEditRamName] = useState('')
@@ -576,9 +581,22 @@ export default function App() {
           onOpenMobHistory={(id)=> setHistoryMobId(id)}
           moveMobId={moveMobId}
           onRequestMove={(id)=> setMoveMobId(id)}
-          onSelectMoveTarget={async (mobId, pid) => { await transferMob(mobId, pid); setMoveMobId(null) }}
+          onSelectMoveTarget={async (mobId, pid) => {
+            const dest = paddocks.find(p=>p.id===pid)?.name || `Paddock ${pid}`
+            await transferMob(mobId, pid)
+            setMoveMobId(null)
+            showToast(`Moved to ${dest}`)
+          }}
+          onCancelMove={() => { setMoveMobId(null); showToast('Move cancelled') }}
         />
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className='map-controls' style={{ left: '50%', transform: 'translateX(-50%)', bottom: 72 }}>
+          <div className='panel' style={{ padding: 8, fontSize: 12 }}>{toast}</div>
+        </div>
+      )}
 
       {/* Full-screen Menu Overlay */}
       {sidebarOpen && (

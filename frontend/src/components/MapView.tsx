@@ -37,7 +37,7 @@ function makeEmojiIcon(emoji: string): DivIcon {
   return L.divIcon({ className: 'mob-marker', html: emoji, iconSize: [24, 24], iconAnchor: [12, 12] })
 }
 
-export default function MapView({ paddocks, mobs, movements, mobTypes, selectedMobId, mobDOBs, onOpenMenu, onOpenField, onOpenMobHistory, moveMobId, onRequestMove, onSelectMoveTarget }: { paddocks: Paddock[]; mobs: Mob[]; movements: Movement[]; mobTypes: MobTypes; selectedMobId?: number | null; mobDOBs?: Record<number, string>; onOpenMenu?: () => void; onOpenField?: (paddockId: number) => void; onOpenMobHistory?: (mobId: number) => void; moveMobId?: number | null; onRequestMove?: (mobId: number) => void; onSelectMoveTarget?: (mobId: number, paddockId: number) => void }) {
+export default function MapView({ paddocks, mobs, movements, mobTypes, selectedMobId, mobDOBs, onOpenMenu, onOpenField, onOpenMobHistory, moveMobId, onRequestMove, onSelectMoveTarget, onCancelMove }: { paddocks: Paddock[]; mobs: Mob[]; movements: Movement[]; mobTypes: MobTypes; selectedMobId?: number | null; mobDOBs?: Record<number, string>; onOpenMenu?: () => void; onOpenField?: (paddockId: number) => void; onOpenMobHistory?: (mobId: number) => void; moveMobId?: number | null; onRequestMove?: (mobId: number) => void; onSelectMoveTarget?: (mobId: number, paddockId: number) => void; onCancelMove?: () => void }) {
   const center: LatLngTuple = [-31.9, 148.6]
   const [userPos, setUserPos] = useState<LatLngTuple | null>(null)
   const [accuracy, setAccuracy] = useState<number | null>(null)
@@ -360,7 +360,10 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
       <FitToPaddocks />
       {moveMobId && (
         <div className='map-controls' style={{ left: '50%', transform: 'translateX(-50%)', bottom: 12 }}>
-          <div className='panel' style={{ padding: 8, fontSize: 12 }}>Moving mob: tap a paddock to select destination</div>
+          <div className='panel' style={{ padding: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>Moving mob: tap a paddock to select destination</span>
+            <button className='control-btn' onClick={() => onCancelMove && onCancelMove()}>Cancel</button>
+          </div>
         </div>
       )}
       {/* Crop legend */}
