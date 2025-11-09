@@ -58,7 +58,7 @@ h3 { font-size: 14px; }
 .mob-marker { font-size: 18px; text-shadow: 0 0 2px #0005; }
 
 /* Map tweaks */
-.map-container {margin-top: 48px; height: 100%; width: 100%; }
+.map-container {margin-top: 48px; height: auto; width: 100%; }
 
 /* Responsive layout helpers */
 .app-shell { height: 100%; display: grid; grid-template-columns: 360px 1fr; }
