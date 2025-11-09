@@ -284,7 +284,7 @@ export default function App() {
           </div>
           <div className="sidebar-header__subtitle">Field management</div>
         </div>
-        {false && (<>
+        
         <div className="sidebar-tabs">
           <button className={`sidebar-tab ${sidebarTab==='livestock'?'sidebar-tab--active':''}`} onClick={()=>setSidebarTab('livestock')}>Livestock</button>
           <button className={`sidebar-tab ${sidebarTab==='fields'?'sidebar-tab--active':''}`} onClick={()=>setSidebarTab('fields')}>Field Ops</button>
@@ -569,7 +569,6 @@ export default function App() {
           <p style={{ marginTop: 24 }}><small style={{ color: '#6b7280' }}>API: {API}</small></p>
         </div>
       </div>
-      </> )}
       <div style={{ position: 'relative' }}>
         <MapView
           paddocks={paddocks}
