@@ -151,6 +151,132 @@ export default function App() {
             <h2 className="sidebar-header__title" style={{ margin: 0 }}>JustFarming</h2>
             <button className="btn btn--ghost" onClick={() => setSidebarOpen(false)}>Close</button>
           </div>
+          {/* Tabs with old sidebar sections */}
+          <div style={{ borderBottom: '1px solid #e5e7eb', padding: '8px 16px', display: 'flex', gap: 8 }}>
+            <button className={`sidebar-tab ${sidebarTab==='livestock'?'sidebar-tab--active':''}`} onClick={()=>setSidebarTab('livestock')}>Livestock</button>
+            <button className={`sidebar-tab ${sidebarTab==='fields'?'sidebar-tab--active':''}`} onClick={()=>setSidebarTab('fields')}>Field Ops</button>
+            <button className={`sidebar-tab ${sidebarTab==='settings'?'sidebar-tab--active':''}`} onClick={()=>setSidebarTab('settings')}>Settings</button>
+          </div>
+          <div style={{ padding: 16, overflowY: 'auto' }}>
+            {sidebarTab === 'livestock' && (
+              <>
+                <h3 className='section-title' style={{ marginTop: 0 }}>Create Mob</h3>
+                <div className='form-compact' style={{ marginBottom: 12 }}>
+                  <input className='input' value={newMobName} onChange={e => setNewMobName(e.target.value)} placeholder='Name' style={{ marginBottom: 8 }} />
+                  <input className='input' type='number' value={newMobCount} onChange={e => setNewMobCount(parseInt(e.target.value))} placeholder='Count' style={{ marginBottom: 8 }} />
+                  <button className='btn btn--primary' onClick={createMob}>Add Mob</button>
+                </div>
+                <h3 className='section-title'>Rams</h3>
+                <div className='panel form-compact' style={{ padding: 8, marginBottom: 12 }}>
+                  <div style={{ maxHeight: 140, overflow: 'auto', marginBottom: 8 }}>
+                    {rams.length === 0 && <div className='muted' style={{ fontSize: 12 }}>No rams yet</div>}
+                    {rams.map(r => (
+                      <div key={r.id} style={{ padding: '6px 0', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong>{r.name}</strong> {r.tag_id ? <span className='muted'>({r.tag_id})</span> : null}
+                          {r.notes ? <div className='muted' style={{ fontSize: 12 }}>{r.notes}</div> : null}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className='btn' onClick={()=>{ setEditingRamId(r.id); setEditRamName(r.name); setEditRamTag(r.tag_id || ''); setEditRamNotes(r.notes || '') }}>Edit</button>
+                          <button className='btn btn--ghost' onClick={async()=>{ if(!confirm('Delete ram?')) return; await axios.delete(`${API}/v1/sheep/rams/${r.id}`); const rr = await axios.get(`${API}/v1/sheep/rams`); setRams(rr.data) }}>Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <AddRamForm onAdded={async()=>{ const rr = await axios.get(`${API}/v1/sheep/rams`); setRams(rr.data) }} />
+                </div>
+                <h3 className='section-title'>Mobs</h3>
+                <div className='form-compact' style={{ maxHeight: 260, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+                  {mobs.length === 0 && <div style={{ padding: 8, fontSize: 13, color: '#6b7280' }}>No mobs yet</div>}
+                  {mobs.map(m => (
+                    <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '1fr', padding: 8, borderBottom: '1px solid #f3f4f6' }}>
+                      <div style={{ fontWeight: 600 }}>
+                        {m.name}
+                        {mobDOBs[m.id] && <span style={{ fontWeight: 400, color: '#6b7280' }}> ({ageFromDOB(mobDOBs[m.id]) ?? ''}y)</span>}
+                        <span style={{ fontWeight: 400, color: '#6b7280' }}> ({m.count})</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
+                        <select className='select' value={m.paddock_id ?? ''} onChange={e => transferMob(m.id, e.target.value ? parseInt(e.target.value) : null)} style={{ flex: 1 }}>
+                          <option value=''>Unassigned</option>
+                          {[...paddocks].sort((a,b)=>a.name.localeCompare(b.name)).map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}
+                        </select>
+                        <select className='select' value={mobTypes[m.id] || 'cow'} onChange={e => setMobTypes(prev => ({ ...prev, [m.id]: e.target.value }))}>
+                          <option value='cow'>Cattle</option>
+                          <option value='sheep'>Sheep</option>
+                          <option value='goat'>Goat</option>
+                          <option value='pig'>Pig</option>
+                          <option value='horse'>Horse</option>
+                          <option value='chicken'>Chicken</option>
+                          <option value='deer'>Deer</option>
+                          <option value='alpaca'>Alpaca</option>
+                          <option value='camel'>Camel</option>
+                          <option value='other'>Other</option>
+                        </select>
+                        <input className='input' type='date' value={mobDOBs[m.id] || ''} onChange={e => setMobDOBs(prev => ({ ...prev, [m.id]: e.target.value }))} style={{ maxWidth: 140 }} />
+                        <button className='btn btn--ghost' onClick={() => setHistoryMobId(m.id)}>History</button>
+                        <input className='input' type='number' defaultValue={m.avg_weight} placeholder='Approx weight (kg)'
+                          onBlur={async (e) => { const val = parseFloat(e.target.value); if (!isNaN(val)) { await axios.patch(`${API}/v1/mobs/${m.id}`, { avg_weight: val }); await load() } }} style={{ width: 140 }} />
+                        <span style={{ fontSize: 12, color: '#6b7280' }}>{m.paddock_id ? paddockLookup.get(m.paddock_id)?.name : 'No paddock'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {sidebarTab === 'fields' && (
+              <>
+                <h3 className='section-title' style={{ marginTop: 0 }}>Field Ops</h3>
+                <div className='form-compact panel' style={{ padding: 8, marginBottom: 8 }}>
+                  <select className='select' value={selectedPaddockId as any} onChange={e=>setSelectedPaddockId(e.target.value?parseInt(e.target.value):'')} style={{ marginBottom: 6 }}>
+                    <option value=''>Select paddock</option>
+                    {[...paddocks].sort((a,b)=>a.name.localeCompare(b.name)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <div className='form-compact' style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, marginBottom: 6 }}>
+                    <select className='select' value={cropType} onChange={e=>{ const t = e.target.value; setCropType(t); if (cropPalette[t]) setCropColor(cropPalette[t]) }}>
+                      <option value=''>Crop type…</option>
+                      {Object.keys(cropPalette).sort((a,b)=>a.localeCompare(b)).map(k => (<option key={k} value={k}>{k}</option>))}
+                    </select>
+                    <input className='input' type='color' value={cropColor} onChange={e=>setCropColor(e.target.value)} title='Crop color' />
+                  </div>
+                  <button className='btn btn--primary' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; await axios.patch(`${API}/v1/paddocks/${selectedPaddockId}`, { crop_type: cropType || null, crop_color: cropColor || null }); await load() }}>Save Type/Color</button>
+                  <div style={{ height: 8 }} />
+                  <div className='form-compact' style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <button className='btn' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; const chemical = prompt('Chemical?') || ''; const rate = prompt('Rate? (e.g., 1.5 L/ha)') || ''; if(!chemical) return; await axios.post(`${API}/v1/fields/spraying`, { paddock_id: selectedPaddockId, chemical, rate: rate || null }) }}>+ Spraying</button>
+                    <button className='btn' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; const seed = prompt('Seed/Species?') || ''; const rate = prompt('Sowing rate?') || ''; if(!seed) return; await axios.post(`${API}/v1/fields/sowing`, { paddock_id: selectedPaddockId, seed, rate: rate || null }) }}>+ Sowing</button>
+                    <button className='btn' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; const product = prompt('Fertiliser product?') || ''; const rate = prompt('Rate?') || ''; if(!product) return; await axios.post(`${API}/v1/fields/fertiliser`, { paddock_id: selectedPaddockId, product, rate: rate || null }) }}>+ Fertiliser</button>
+                    <button className='btn' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; await axios.post(`${API}/v1/fields/cut`, { paddock_id: selectedPaddockId }) }}>+ Cut</button>
+                    <button className='btn' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; const kind = prompt('Harvest type (bale/harvest)?', 'bale') || 'bale'; const amount = prompt('Amount (e.g., 120 bales or 3.2 t)?') || ''; await axios.post(`${API}/v1/fields/harvest`, { paddock_id: selectedPaddockId, kind, amount: amount || null }) }}>+ Harvest</button>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <button className='btn' onClick={()=> setManageOpsOpen(true)}>Manage Operations…</button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {sidebarTab === 'settings' && (
+              <>
+                <h3 className='section-title' style={{ marginTop: 0 }}>Settings</h3>
+                <div className='panel form-compact' style={{ padding: 12, marginBottom: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div>
+                      <label className='muted' style={{ fontSize: 12 }}>Weaning offset (days)</label>
+                      <input className='input' type='number' min={0} value={weaningOffsetDays as any} onChange={e=> setWeaningOffsetDays(Math.max(0, parseInt(e.target.value||'0')))} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'end' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input type='checkbox' checked={legendOnlyUsed} onChange={e=> setLegendOnlyUsed(e.target.checked)} />
+                        <span className='muted' style={{ fontSize: 12 }}>Legend: only show used crop types</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <h3 className='section-title'>Import KML</h3>
+                <KmlUploader onUploaded={async ()=>{ await load(); alert('KML imported'); }} />
+              </>
+            )}
+          </div>
           <div className="sidebar-header__subtitle">Field management</div>
         </div>
         <div className="sidebar-tabs">
