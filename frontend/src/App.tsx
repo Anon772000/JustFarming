@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+ï»¿import React, { useEffect, useMemo, useState } from 'react'
 import MapView from './components/MapView'
 import axios from 'axios'
 import KmlUploader from "./components/KmlUploader";
@@ -131,7 +131,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" style={{ gridTemplateColumns: '1fr' }}>
       {/* Mobile top bar */}
       <div className="topbar">
         <button className="hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><span /></button>
@@ -458,7 +458,7 @@ export default function App() {
             <div>
               <h3 className='section-title' style={{ marginTop: 0 }}>Quick Actions</h3>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button className='btn' onClick={()=> setManageOpsOpen(true)}>Manage Operations…</button>
+                <button className='btn' onClick={()=> setManageOpsOpen(true)}>Manage Operationsï¿½</button>
               </div>
             </div>
 
@@ -536,8 +536,8 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
   const [worming, setWorming] = useState<any[]>([])
   const [footbath, setFootbath] = useState<any[]>([])
   // Sheep-specific
-  const [rams, setRams] = useState<any[]
-  const [moveMobId, setMoveMobId] = useState<number | null>(null)>([])
+  const [rams, setRams] = useState<any[]>([])
+  const [moveMobId, setMoveMobId] = useState<number | null>(null)
   const [joining, setJoining] = useState<any[]>([])
   const [marking, setMarking] = useState<any[]>([])
   const [weaning, setWeaning] = useState<any[]>([])
