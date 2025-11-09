@@ -45,19 +45,26 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
   const [legendOpen, setLegendOpen] = useState<boolean>(false)
   const [legendOnlyUsed, setLegendOnlyUsed] = useState<boolean>(() => (localStorage.getItem('legendOnlyUsed') === 'true'))
   const palette: Record<string, string> = {
-    'Wheat / Barley': '#E5C07B',
-    'Corn / Maize': '#B5E550',
-    'Canola / Rapeseed': '#FFD700',
-    'Cotton': '#D9D9D9',
-    'Soybeans': '#4CAF50',
-    'Sorghum': '#B74E25',
-    'Lucerne / Alfalfa': '#A4DE02',
-    'Pasture': '#2E7D32',
-    'Fallow / Bare Soil': '#8B5A2B',
-    'Vegetables (general)': '#3DBF8A',
-    'Orchards / Trees': '#556B2F',
-    'Vineyards / Grapes': '#6B4C9A',
-  }
+  'Wheat': '#E5C07B',
+  'Barley': '#D4B157',
+  'Corn': '#B5E550',
+  'Maize': '#9ED93C',
+  'Canola': '#FFD700',
+  'Rapeseed': '#FFC200',
+  'Cotton': '#D9D9D9',
+  'Soybeans': '#4CAF50',
+  'Sorghum': '#B74E25',
+  'Lucerne': '#A4DE02',
+  'Alfalfa': '#8BC34A',
+  'Pasture': '#2E7D32',
+  'Fallow': '#8B5A2B',
+  'Bare Soil': '#6D4C41',
+  'Vegetables': '#3DBF8A',
+  'Orchards': '#556B2F',
+  'Trees': '#33691E',
+  'Vineyards': '#6B4C9A',
+  'Grapes': '#5E35B1',
+}
   useEffect(() => {
     const handler = (e: StorageEvent) => {
       if (e.key === 'legendOnlyUsed') setLegendOnlyUsed(e.newValue === 'true')
@@ -220,7 +227,6 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
     const map = useMap()
     return (
       <div className='map-controls'>
-        <button className='control-btn' onClick={() => onOpenMenu && onOpenMenu()}>Menu</button>
         <button className='control-btn' onClick={() => { if (userPos) map.flyTo(userPos as any, 16) }}>Locate</button>
         <button className='control-btn' onClick={() => setGpsOn(s => !s)}>{gpsOn ? 'GPS: On' : 'GPS: Off'}</button>
       </div>

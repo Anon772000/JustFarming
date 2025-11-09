@@ -637,23 +637,29 @@ export default function App() {
                 </div>
 
                 <h3 className='section-title form-compact'>Rams</h3>
-                <div className='panel form-compact' style={{ padding: 8, marginBottom: 12 }}>
-                  <div style={{ maxHeight: 140, overflow: 'auto', marginBottom: 8 }}>
-                    {rams.length === 0 && <div className='muted' style={{ fontSize: 12 }}>No rams yet</div>}
-                    {rams.map(r => (
-                      <div key={r.id} style={{ padding: '6px 0', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <strong>{r.name}</strong> {r.tag_id ? <span className='muted'>({r.tag_id})</span> : null}
-                          {r.notes ? <div className='muted' style={{ fontSize: 12 }}>{r.notes}</div> : null}
-                        </div>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className='btn' onClick={()=>{ setEditingRamId(r.id); setEditRamName(r.name); setEditRamTag(r.tag_id || ''); setEditRamNotes(r.notes || '') }}>Edit</button>
-                          <button className='btn btn--ghost' onClick={async()=>{ if(!confirm('Delete ram?')) return; await axios.delete(`${API}/v1/sheep/rams/${r.id}`); const rr = await axios.get(`${API}/v1/sheep/rams`); setRams(rr.data) }}>Delete</button>
-                        </div>
+                <div className='panel' style={{ padding: 8, marginBottom: 12 }}>
+                  <div className='row g-2'>
+                    <div className='col-12 col-lg-7'>
+                      <div style={{ maxHeight: 180, overflow: 'auto' }}>
+                        {rams.length === 0 && <div className='muted' style={{ fontSize: 12 }}>No rams yet</div>}
+                        {rams.map(r => (
+                          <div key={r.id} className='row' style={{ padding: '6px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+                            <div className='col'>
+                              <strong>{r.name}</strong> {r.tag_id ? <span className='muted'>({r.tag_id})</span> : null}
+                              {r.notes ? <div className='muted' style={{ fontSize: 12 }}>{r.notes}</div> : null}
+                            </div>
+                            <div className='col-auto d-flex gap-2'>
+                              <button className='btn' onClick={()=>{ setEditingRamId(r.id); setEditRamName(r.name); setEditRamTag(r.tag_id || ''); setEditRamNotes(r.notes || '') }}>Edit</button>
+                              <button className='btn btn--ghost' onClick={async()=>{ if(!confirm('Delete ram?')) return; await axios.delete(`${API}/v1/sheep/rams/${r.id}`); const rr = await axios.get(`${API}/v1/sheep/rams`); setRams(rr.data) }}>Delete</button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                    <div className='col-12 col-lg-5'>
+                      <AddRamForm onAdded={async()=>{ const rr = await axios.get(`${API}/v1/sheep/rams`); setRams(rr.data) }} />
+                    </div>
                   </div>
-                  <AddRamForm onAdded={async()=>{ const rr = await axios.get(`${API}/v1/sheep/rams`); setRams(rr.data) }} />
                 </div>
 
                 <h3 className='section-title'>Mobs</h3>
@@ -832,7 +838,11 @@ export default function App() {
                   </div>
                 </div>
                 <h3 className='section-title'>Import KML</h3>
-                <KmlUploader onUploaded={async ()=>{ await load(); alert('KML imported'); }} />
+                <div className='row g-2'>
+                  <div className='col-12 col-md-6 col-lg-4'>
+                    <KmlUploader onUploaded={async ()=>{ await load(); alert('KML imported'); }} />
+                  </div>
+                </div>
               </>
             )}
 
@@ -1210,15 +1220,23 @@ function AddRamForm({ onAdded }: { onAdded?: () => void }) {
   const [notes, setNotes] = useState('')
   const canSave = name.trim().length > 0
   return (
-    <div className="form-compact" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-      <input className="input" placeholder="Ram name" value={name} onChange={e=>setName(e.target.value)} />
-      <input className="input" placeholder="Tag ID" value={tag} onChange={e=>setTag(e.target.value)} />
-      <input className="input" placeholder="Notes" value={notes} onChange={e=>setNotes(e.target.value)} style={{ gridColumn: '1 / -1' }} />
-      <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 6 }}>
-        <button className="btn btn--primary" disabled={!canSave} onClick={async()=>{
-          await axios.post(`${API}/v1/sheep/rams`, { name, tag_id: tag || undefined, notes: notes || undefined })
-          setName(''); setTag(''); setNotes(''); onAdded && onAdded()
-        }}>Add Ram</button>
+    <div className="form-compact">
+      <div className='row g-2'>
+        <div className='col-12 col-sm-6'>
+          <input className="input" placeholder="Ram name" value={name} onChange={e=>setName(e.target.value)} />
+        </div>
+        <div className='col-12 col-sm-6'>
+          <input className="input" placeholder="Tag ID" value={tag} onChange={e=>setTag(e.target.value)} />
+        </div>
+        <div className='col-12'>
+          <input className="input" placeholder="Notes" value={notes} onChange={e=>setNotes(e.target.value)} />
+        </div>
+        <div className='col-12 col-sm-4 col-md-3'>
+          <button className="btn btn--primary w-100" disabled={!canSave} onClick={async()=>{
+            await axios.post(`${API}/v1/sheep/rams`, { name, tag_id: tag || undefined, notes: notes || undefined })
+            setName(''); setTag(''); setNotes(''); onAdded && onAdded()
+          }}>Add Ram</button>
+        </div>
       </div>
     </div>
   )
