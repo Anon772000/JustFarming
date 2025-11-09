@@ -206,15 +206,17 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
     const map = useMap()
     return (
       <div className='map-controls'>
-        <button className='control-btn' onClick={() => { if (userPos) map.flyTo(userPos as any, 16) }}>Locate</button>
-        <button className='control-btn' onClick={() => setGpsOn(s => !s)}>{gpsOn ? 'GPS: On' : 'GPS: Off'}</button>
+        <button className='btn btn-sm btn-light' onClick={() => { if (userPos) map.flyTo(userPos as any, 16) }}>Locate</button>
+        <button className='btn btn-sm btn-light' onClick={() => setGpsOn(s => !s)}>{gpsOn ? 'GPS: On' : 'GPS: Off'}</button>
       </div>
     )
   }
 
   function FitToPaddocks() {
     const map = useMap()
+    const didFit = React.useRef(false)
     useEffect(() => {
+      if (didFit.current) return
       const pts: LatLngTuple[] = []
       paddocks.forEach(p => {
         const poly = parsePolygon(p.polygon_geojson)
@@ -222,6 +224,7 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
       })
       if (pts.length > 0) {
         map.fitBounds(L.latLngBounds(pts as any).pad(0.2))
+        didFit.current = true
       }
     }, [paddocks])
     return null
@@ -256,7 +259,12 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
               <Polygon
                 key={p.id}
                 positions={parsePolygon(p.polygon_geojson)}
-                pathOptions={{ color: p.crop_color || '#198754', fillColor: p.crop_color || '#198754', fillOpacity: 0.25, weight: moveMobId ? 3 : 1 }}
+                pathOptions={{
+                  color: p.crop_color || (p.crop_type ? cropPalette[p.crop_type as string] : (cropPalette['Pasture'] || '#2E7D32')),
+                  fillColor: p.crop_color || (p.crop_type ? cropPalette[p.crop_type as string] : (cropPalette['Pasture'] || '#2E7D32')),
+                  fillOpacity: 0.25,
+                  weight: moveMobId ? 3 : 1
+                }}
                 eventHandlers={{
                   click: () => {
                     if (moveMobId && onSelectMoveTarget) onSelectMoveTarget(moveMobId, p.id)
@@ -345,21 +353,21 @@ export default function MapView({ paddocks, mobs, movements, mobTypes, selectedM
       <FitToPaddocks />
       {moveMobId && (
         <div className='map-controls' style={{ left: '50%', transform: 'translateX(-50%)', bottom: 12 }}>
-          <div className='panel' style={{ padding: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className='card card-body' style={{ padding: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>Moving mob: tap a paddock to select destination</span>
-            <button className='control-btn' onClick={() => onCancelMove && onCancelMove()}>Cancel</button>
+            <button className='btn btn-sm btn-light' onClick={() => onCancelMove && onCancelMove()}>Cancel</button>
           </div>
         </div>
       )}
       {/* Crop legend */}
       <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 900 }}>
         {!legendOpen ? (
-          <button className='control-btn' onClick={() => setLegendOpen(true)}>Legend</button>
+          <button className='btn btn-sm btn-light' onClick={() => setLegendOpen(true)}>Legend</button>
         ) : (
-          <div className='map-legend panel' style={{ padding: 8, minWidth: 180 }}>
+          <div className='map-legend card card-body' style={{ padding: 8, minWidth: 180 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <strong style={{ fontSize: 12 }}>Crop Legend</strong>
-              <button className='control-btn' onClick={() => setLegendOpen(false)}>Close</button>
+              <button className='btn btn-sm btn-light' onClick={() => setLegendOpen(false)}>Close</button>
             </div>
             {(legendOnlyUsed ? Array.from(new Map(paddocks
               .filter(p => (p.crop_type && p.crop_color))

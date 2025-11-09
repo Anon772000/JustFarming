@@ -93,6 +93,7 @@ export default function App() {
   const [tagEar, setTagEar] = useState<Record<number, 'left'|'right'|'unknown'>>({})
   const [tagColor, setTagColor] = useState<Record<number, string>>({})
   const [tagLabel, setTagLabel] = useState<Record<number, string>>({})
+  const [opModal, setOpModal] = useState<null | { type: 'spraying'|'sowing'|'fertiliser'|'cut'|'harvest'; paddockId: number }>(null)
 
   const load = async () => {
     const [pRes, mRes, mvRes, rRes] = await Promise.all([
@@ -245,7 +246,7 @@ export default function App() {
                   </select>
                   <div className='form-compact' style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, marginBottom: 6 }}>
                     <select className='select' value={cropType} onChange={e=>{ const t = e.target.value; setCropType(t); if (cropPalette[t]) setCropColor(cropPalette[t]) }}>
-                      <option value=''>Crop type�</option>
+                      <option value=''>Crop type</option>
                       {Object.keys(cropPalette).sort((a,b)=>a.localeCompare(b)).map(k => (<option key={k} value={k}>{k}</option>))}
                     </select>
                     <input className='input' type='color' value={cropColor} onChange={e=>setCropColor(e.target.value)} title='Crop color' />
@@ -260,7 +261,7 @@ export default function App() {
                     <button className='btn' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; const kind = prompt('Harvest type (bale/harvest)?', 'bale') || 'bale'; const amount = prompt('Amount (e.g., 120 bales or 3.2 t)?') || ''; await axios.post(`${API}/v1/fields/harvest`, { paddock_id: selectedPaddockId, kind, amount: amount || null }) }}>+ Harvest</button>
                   </div>
                   <div style={{ marginTop: 8 }}>
-                    <button className='btn' onClick={()=> setManageOpsOpen(true)}>Manage Operations�</button>
+                    <button className='btn' onClick={()=> setManageOpsOpen(true)}>Manage Operations</button>
                   </div>
                 </div>
               </>
@@ -615,11 +616,17 @@ export default function App() {
             <button className='btn' onClick={()=> setSidebarOpen(false)}>Close</button>
           </div>
           {/* Tabs header inside the overlay */}
-          <div className="sidebar-tabs">
-            <button className={`sidebar-tab ${sidebarTab==='livestock'?'sidebar-tab--active':''}`} onClick={()=>setSidebarTab('livestock')}>Livestock</button>
-            <button className={`sidebar-tab ${sidebarTab==='fields'?'sidebar-tab--active':''}`} onClick={()=>setSidebarTab('fields')}>Field Ops</button>
-            <button className={`sidebar-tab ${sidebarTab==='settings'?'sidebar-tab--active':''}`} onClick={()=>setSidebarTab('settings')}>Settings</button>
-          </div>
+          <ul className="nav nav-pills" style={{ padding: '8px 16px' }}>
+            <li className="nav-item">
+              <button className={`nav-link ${sidebarTab==='livestock'?'active':''}`} onClick={()=>setSidebarTab('livestock')}>Livestock</button>
+            </li>
+            <li className="nav-item">
+              <button className={`nav-link ${sidebarTab==='fields'?'active':''}`} onClick={()=>setSidebarTab('fields')}>Field Ops</button>
+            </li>
+            <li className="nav-item">
+              <button className={`nav-link ${sidebarTab==='settings'?'active':''}`} onClick={()=>setSidebarTab('settings')}>Settings</button>
+            </li>
+          </ul>
           {/* Tab content area */}
           <div className="container-fluid" style={{ padding: 16, overflowY: 'auto', maxHeight: 'calc(100vh - 88px)' }}>
             {sidebarTab === 'livestock' && (
@@ -799,22 +806,22 @@ export default function App() {
                       <button className='btn btn--primary w-100' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; await axios.patch(`${API}/v1/paddocks/${selectedPaddockId}`, { crop_type: cropType || null, crop_color: cropColor || null }); await load() }}>Save Type/Color</button>
                     </div>
                     <div className='col-6 col-md-3'>
-                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; const chemical = prompt('Chemical?') || ''; const rate = prompt('Rate? (e.g., 1.5 L/ha)') || ''; if(!chemical) return; await axios.post(`${API}/v1/fields/spraying`, { paddock_id: selectedPaddockId, chemical, rate: rate || null }) }}>+ Spraying</button>
+                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={()=>{ if(!selectedPaddockId) return; setOpModal({ type: 'spraying', paddockId: selectedPaddockId as number }) }}>+ Spraying</button>
                     </div>
                     <div className='col-6 col-md-3'>
-                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; const seed = prompt('Seed/Species?') || ''; const rate = prompt('Sowing rate?') || ''; if(!seed) return; await axios.post(`${API}/v1/fields/sowing`, { paddock_id: selectedPaddockId, seed, rate: rate || null }) }}>+ Sowing</button>
+                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={()=>{ if(!selectedPaddockId) return; setOpModal({ type: 'sowing', paddockId: selectedPaddockId as number }) }}>+ Sowing</button>
                     </div>
                     <div className='col-6 col-md-3'>
-                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; const product = prompt('Fertiliser product?') || ''; const rate = prompt('Rate?') || ''; if(!product) return; await axios.post(`${API}/v1/fields/fertiliser`, { paddock_id: selectedPaddockId, product, rate: rate || null }) }}>+ Fertiliser</button>
+                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={()=>{ if(!selectedPaddockId) return; setOpModal({ type: 'fertiliser', paddockId: selectedPaddockId as number }) }}>+ Fertiliser</button>
                     </div>
                     <div className='col-6 col-md-3'>
-                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; await axios.post(`${API}/v1/fields/cut`, { paddock_id: selectedPaddockId }) }}>+ Cut</button>
+                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={()=>{ if(!selectedPaddockId) return; setOpModal({ type: 'cut', paddockId: selectedPaddockId as number }) }}>+ Cut</button>
                     </div>
                     <div className='col-6 col-md-3'>
-                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; const kind = prompt('Harvest type (bale/harvest)?', 'bale') || 'bale'; const amount = prompt('Amount (e.g., 120 bales or 3.2 t)?') || ''; await axios.post(`${API}/v1/fields/harvest`, { paddock_id: selectedPaddockId, kind, amount: amount || null }) }}>+ Harvest</button>
+                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={()=>{ if(!selectedPaddockId) return; setOpModal({ type: 'harvest', paddockId: selectedPaddockId as number }) }}>+ Harvest</button>
                     </div>
                     <div className='col-12 col-md-3'>
-                      <button className='btn w-100' onClick={()=> setManageOpsOpen(true)}>Manage Operations.</button>
+                      <button className='btn btn-outline-primary w-100' onClick={()=> setManageOpsOpen(true)}>Manage Operations.</button>
                     </div>
                   </div>
                 </div>
@@ -835,6 +842,19 @@ export default function App() {
                         <input type='checkbox' checked={legendOnlyUsed} onChange={e=> setLegendOnlyUsed(e.target.checked)} />
                         <span className='muted' style={{ fontSize: 12 }}>Legend: only show used crop types</span>
                       </label>
+                    </div>
+                    <div className='col-12'>
+                      <button className='btn btn--ghost' onClick={async()=>{
+                        if (!confirm('Set crop_type=Pasture for paddocks missing a crop, and color to Pasture color?')) return
+                        const pastureColor = cropPalette['Pasture'] || '#2E7D32'
+                        for (const p of paddocks) {
+                          if (!p.crop_type) {
+                            await axios.patch(`${API}/v1/paddocks/${p.id}`, { crop_type: 'Pasture', crop_color: pastureColor })
+                          }
+                        }
+                        await load()
+                        alert('Updated empty paddocks to Pasture')
+                      }}>Normalize empty paddocks to Pasture</button>
                     </div>
                   </div>
                 </div>
@@ -910,9 +930,116 @@ export default function App() {
           onClose={() => setFieldPaddockId(null)}
         />
       )}
-      {manageOpsOpen && (
-        <ManageOperationsModal paddocks={paddocks} onClose={()=> setManageOpsOpen(false)} />
-      )}
+  {manageOpsOpen && (
+    <ManageOperationsModal paddocks={paddocks} onClose={()=> setManageOpsOpen(false)} />
+  )}
+  {opModal && (
+    <FieldOpModal
+      type={opModal.type}
+      paddockId={opModal.paddockId}
+      paddockName={paddocks.find(p=>p.id===opModal.paddockId)?.name || `Paddock ${opModal.paddockId}`}
+      onClose={()=> setOpModal(null)}
+      onSaved={async()=>{ setOpModal(null); await load() }}
+      paddocks={paddocks}
+      cropPalette={cropPalette}
+    />
+  )}
+    </div>
+  )
+}
+
+function FieldOpModal({ type, paddockId, paddockName, onClose, onSaved, paddocks, cropPalette }: { type: 'spraying'|'sowing'|'fertiliser'|'cut'|'harvest'; paddockId: number; paddockName: string; onClose: ()=>void; onSaved: ()=>void; paddocks: Paddock[]; cropPalette: Record<string,string> }) {
+  const [date, setDate] = useState<string>('')
+  const [chemical, setChemical] = useState('')
+  const [seed, setSeed] = useState('')
+  const [product, setProduct] = useState('')
+  const [rate, setRate] = useState('')
+  const [kind, setKind] = useState<'bale'|'harvest'>('bale')
+  const [amount, setAmount] = useState('')
+  const [notes, setNotes] = useState('')
+  const [targets, setTargets] = useState<number[]>([paddockId])
+  const save = async () => {
+    const ids = Array.from(new Set(targets))
+    for (const pid of ids) {
+      const payload: any = { paddock_id: pid }
+      if (date) payload.date = date
+      if (notes.trim()) payload.notes = notes.trim()
+      if (type === 'spraying') { if (!chemical.trim()) continue; payload.chemical = chemical.trim(); if (rate.trim()) payload.rate = rate.trim() }
+      if (type === 'sowing')   { if (!seed.trim()) continue;     payload.seed = seed.trim();       if (rate.trim()) payload.rate = rate.trim() }
+      if (type === 'fertiliser'){ if (!product.trim()) continue;  payload.product = product.trim(); if (rate.trim()) payload.rate = rate.trim() }
+      if (type === 'harvest')  { payload.kind = kind; if (amount.trim()) payload.amount = amount.trim() }
+      const endpoint = type
+      await axios.post(`${API}/v1/fields/${endpoint}`, payload)
+      if (type === 'sowing') {
+        const color = cropPalette[seed] || undefined
+        await axios.patch(`${API}/v1/paddocks/${pid}`, { crop_type: seed, crop_color: color || null })
+      }
+    }
+    await onSaved()
+  }
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300 }} onClick={onClose}>
+      <div className='panel' style={{ width: 560, maxHeight: '80vh', overflow: 'auto' }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 className='section-title' style={{ margin: 0 }}>Add {type.charAt(0).toUpperCase()+type.slice(1)}</h3>
+          <button className='btn btn-outline-primary' onClick={onClose}>Close</button>
+        </div>
+        <div className='muted' style={{ fontSize: 12, marginBottom: 8 }}>Default paddock: {paddockName}</div>
+        <div className='row g-2'>
+          <div className='col-12'>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className='muted' style={{ fontSize: 12 }}>Apply to paddocks</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button className='btn btn-outline-primary' onClick={(e)=>{ e.preventDefault(); const all = [...paddocks].map(p=>p.id); setTargets(all) }}>Select All</button>
+                <button className='btn btn-outline-primary' onClick={(e)=>{ e.preventDefault(); setTargets([paddockId]) }}>Clear</button>
+              </div>
+            </div>
+            <select className='select' multiple value={targets.map(String)} onChange={e=>{
+              const opts = Array.from(e.target.selectedOptions).map(o=>parseInt(o.value)); setTargets(opts.length?opts:[paddockId])
+            }} style={{ minHeight: 120 }}>
+              {[...paddocks].sort((a,b)=>a.name.localeCompare(b.name)).map(p=> (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className='col-12 col-sm-6'>
+            <input className='input' type='date' value={date} onChange={e=>setDate(e.target.value)} placeholder='Date (optional)' />
+          </div>
+          {type === 'spraying' && (
+            <>
+              <div className='col-12'><input className='input' placeholder='Chemical' value={chemical} onChange={e=>setChemical(e.target.value)} /></div>
+              <div className='col-12 col-sm-6'><input className='input' placeholder='Rate (e.g., 1.5 L/ha)' value={rate} onChange={e=>setRate(e.target.value)} /></div>
+            </>
+          )}
+          {type === 'sowing' && (
+            <>
+              <div className='col-12'><input className='input' placeholder='Seed/Species' value={seed} onChange={e=>setSeed(e.target.value)} /></div>
+              <div className='col-12 col-sm-6'><input className='input' placeholder='Rate' value={rate} onChange={e=>setRate(e.target.value)} /></div>
+            </>
+          )}
+          {type === 'fertiliser' && (
+            <>
+              <div className='col-12'><input className='input' placeholder='Product' value={product} onChange={e=>setProduct(e.target.value)} /></div>
+              <div className='col-12 col-sm-6'><input className='input' placeholder='Rate' value={rate} onChange={e=>setRate(e.target.value)} /></div>
+            </>
+          )}
+          {type === 'harvest' && (
+            <>
+              <div className='col-6'>
+                <select className='select' value={kind} onChange={e=>setKind(e.target.value as any)}>
+                  <option value='bale'>bale</option>
+                  <option value='harvest'>harvest</option>
+                </select>
+              </div>
+              <div className='col-6'><input className='input' placeholder='Amount (e.g., 120 bales or 3.2 t)' value={amount} onChange={e=>setAmount(e.target.value)} /></div>
+            </>
+          )}
+          <div className='col-12'><input className='input' placeholder='Notes (optional)' value={notes} onChange={e=>setNotes(e.target.value)} /></div>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <button className='btn btn-primary' onClick={save}>Save</button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1371,34 +1498,42 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
           <h3 className='section-title' style={{ margin: 0 }}>Manage Field Operations</h3>
           <button className='btn' onClick={onClose}>Close</button>
         </div>
-        <div className='form-compact' style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, margin: '8px 0' }}>
-          <select className='select' value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}>
-            <option value=''>All types</option>
-            <option value='Spraying'>Spraying</option>
-            <option value='Sowing'>Sowing</option>
-            <option value='Fertiliser'>Fertiliser</option>
-            <option value='Cut'>Cut</option>
-            <option value='Harvest'>Harvest</option>
-          </select>
-          <select className='select' value={paddockFilter as any} onChange={e=>setPaddockFilter(e.target.value?parseInt(e.target.value):'')}>
-            <option value=''>All paddocks</option>
-            {[...paddocks].sort((a,b)=>a.name.localeCompare(b.name)).map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <input className='input' placeholder='Filter by product/chemical?' value={query} onChange={e=>setQuery(e.target.value)} />
+        <div className='container-fluid'>
+          <div className='row g-2 align-items-end' style={{ margin: '8px 0' }}>
+            <div className='col-12 col-md-4'>
+              <select className='select' value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}>
+                <option value=''>All types</option>
+                <option value='Spraying'>Spraying</option>
+                <option value='Sowing'>Sowing</option>
+                <option value='Fertiliser'>Fertiliser</option>
+                <option value='Cut'>Cut</option>
+                <option value='Harvest'>Harvest</option>
+              </select>
+            </div>
+            <div className='col-12 col-md-4'>
+              <select className='select' value={paddockFilter as any} onChange={e=>setPaddockFilter(e.target.value?parseInt(e.target.value):'')}>
+                <option value=''>All paddocks</option>
+                {[...paddocks].sort((a,b)=>a.name.localeCompare(b.name)).map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div className='col-12 col-md-4'>
+              <input className='input' placeholder='Filter by product/chemical?' value={query} onChange={e=>setQuery(e.target.value)} />
+            </div>
+          </div>
         </div>
         <div>
           {timeline.map((e, idx) => {
             const key = `${e.type}-${e.data.id}`
             const isEdit = editKey === key
             return (
-              <div key={idx} style={{ borderBottom: '1px solid #f3f4f6', padding: '8px 0' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr auto', gap: 8, alignItems: 'center' }}>
-                  <div>
+              <div key={idx} className='container-fluid' style={{ borderBottom: '1px solid #f3f4f6', padding: '8px 0' }}>
+                <div className='row g-2 align-items-center'>
+                  <div className='col-12 col-md-4'>
                     <strong>{e.type}</strong>
-                    <div className='muted' style={{ fontSize: 12 }}>{new Date(e.date).toLocaleDateString()} ? {nameOf(e.data.paddock_id)}</div>
+                    <div className='muted' style={{ fontSize: 12 }}>{new Date(e.date).toLocaleDateString()} · {nameOf(e.data.paddock_id)}</div>
                   </div>
                   {!isEdit ? (
-                    <div className='muted' style={{ fontSize: 13 }}>
+                    <div className='col-12 col-md-6 muted' style={{ fontSize: 13 }}>
                       {e.type==='Spraying' && (<>{e.data.chemical}{e.data.rate?` (${e.data.rate})`:''}</>)}
                       {e.type==='Sowing' && (<>{e.data.seed}{e.data.rate?` (${e.data.rate})`:''}</>)}
                       {e.type==='Fertiliser' && (<>{e.data.product}{e.data.rate?` (${e.data.rate})`:''}</>)}
@@ -1406,16 +1541,18 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
                       {e.type==='Harvest' && (<>{e.data.kind}{e.data.amount?` (${e.data.amount})`:''}</>)}
                     </div>
                   ) : (
-                    <div className='form-compact' style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-                      <input className='input' type='date' value={(editFields[key]?.date || e.data.date || '').slice(0,10)} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), date: ev.target.value } }))} />
-                      {e.type==='Spraying' && (<><input className='input' placeholder='Chemical' defaultValue={e.data.chemical||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), chemical: ev.target.value } }))} /><input className='input' placeholder='Rate' defaultValue={e.data.rate||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), rate: ev.target.value } }))} /></>)}
-                      {e.type==='Sowing' && (<><input className='input' placeholder='Seed' defaultValue={e.data.seed||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), seed: ev.target.value } }))} /><input className='input' placeholder='Rate' defaultValue={e.data.rate||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), rate: ev.target.value } }))} /></>)}
-                      {e.type==='Fertiliser' && (<><input className='input' placeholder='Product' defaultValue={e.data.product||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), product: ev.target.value } }))} /><input className='input' placeholder='Rate' defaultValue={e.data.rate||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), rate: ev.target.value } }))} /></>)}
-                      {e.type==='Harvest' && (<><input className='input' placeholder='Kind' defaultValue={e.data.kind||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), kind: ev.target.value } }))} /><input className='input' placeholder='Amount' defaultValue={e.data.amount||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), amount: ev.target.value } }))} /></>)}
-                      {(e.type==='Spraying'||e.type==='Sowing'||e.type==='Fertiliser'||e.type==='Cut'||e.type==='Harvest') && (<input className='input' placeholder='Notes' defaultValue={e.data.notes||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), notes: ev.target.value } }))} />)}
+                    <div className='col-12 col-md-6'>
+                      <div className='row g-2'>
+                        <div className='col-12 col-sm-4'><input className='input' type='date' value={(editFields[key]?.date || e.data.date || '').slice(0,10)} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), date: ev.target.value } }))} /></div>
+                        {e.type==='Spraying' && (<><div className='col-12 col-sm-4'><input className='input' placeholder='Chemical' defaultValue={e.data.chemical||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), chemical: ev.target.value } }))} /></div><div className='col-12 col-sm-4'><input className='input' placeholder='Rate' defaultValue={e.data.rate||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), rate: ev.target.value } }))} /></div></>)}
+                        {e.type==='Sowing' && (<><div className='col-12 col-sm-4'><input className='input' placeholder='Seed' defaultValue={e.data.seed||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), seed: ev.target.value } }))} /></div><div className='col-12 col-sm-4'><input className='input' placeholder='Rate' defaultValue={e.data.rate||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), rate: ev.target.value } }))} /></div></>)}
+                        {e.type==='Fertiliser' && (<><div className='col-12 col-sm-4'><input className='input' placeholder='Product' defaultValue={e.data.product||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), product: ev.target.value } }))} /></div><div className='col-12 col-sm-4'><input className='input' placeholder='Rate' defaultValue={e.data.rate||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), rate: ev.target.value } }))} /></div></>)}
+                        {e.type==='Harvest' && (<><div className='col-12 col-sm-4'><input className='input' placeholder='Kind' defaultValue={e.data.kind||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), kind: ev.target.value } }))} /></div><div className='col-12 col-sm-4'><input className='input' placeholder='Amount' defaultValue={e.data.amount||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), amount: ev.target.value } }))} /></div></>)}
+                        {(e.type==='Spraying'||e.type==='Sowing'||e.type==='Fertiliser'||e.type==='Cut'||e.type==='Harvest') && (<div className='col-12'><input className='input' placeholder='Notes' defaultValue={e.data.notes||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), notes: ev.target.value } }))} /></div>)}
+                      </div>
                     </div>
                   )}
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div className='col-12 col-md-auto d-flex gap-2'>
                     {!isEdit ? (
                       <>
                         <button className='btn' onClick={()=>{ setEditKey(key); setEditFields(prev=>({ ...prev, [key]: { date: e.data.date?.slice(0,10) } })) }}>Edit</button>
