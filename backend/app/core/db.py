@@ -9,9 +9,11 @@ class Base(DeclarativeBase):
     pass
 
 async def init_db():
-    # Lazy import to avoid circulars
-    from .models import Paddock, Mob, Movement, Sensor
+    # Import the models module to ensure ALL model classes are registered on Base.metadata
+    # (importing any symbol from the module also registers the rest, but this is explicit).
+    from . import models  # noqa: F401
     async with engine.begin() as conn:
+        # Create missing tables (safe to call repeatedly)
         await conn.run_sync(Base.metadata.create_all)
         # Best-effort evolve: add new paddock columns if the DB already existed
         try:
