@@ -59,6 +59,11 @@ export default function App() {
   useEffect(() => { localStorage.setItem('mobTags', JSON.stringify(mobTags)) }, [mobTags])
   const [rams, setRams] = useState<Ram[]>([])
   const [moveMobId, setMoveMobId] = useState<number | null>(null)
+  const [opsMobId, setOpsMobId] = useState<number | null>(null)
+  const [expandedMobId, setExpandedMobId] = useState<number | null>(null)
+  const [mobEditNameId, setMobEditNameId] = useState<number | null>(null)
+  const [mobEditName, setMobEditName] = useState<string>('')
+  const [mobDetailTab, setMobDetailTab] = useState<Record<number, 'info' | 'tags'>>({})
   const [fieldPaddockId, setFieldPaddockId] = useState<number | null>(null)
   const [selectedPaddockId, setSelectedPaddockId] = useState<number | ''>('')
   const [cropType, setCropType] = useState('')
@@ -648,13 +653,22 @@ export default function App() {
                   {mobs.length === 0 && <div style={{ padding: 8, fontSize: 13, color: '#6b7280' }}>No mobs yet</div>}
                   {mobs.map(m => (
                     <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '1fr', padding: 8, borderBottom: '1px solid #f3f4f6' }}>
-                      <div style={{ fontWeight: 600 }}>
-                        {m.name}
-                        {mobDOBs[m.id] && <span style={{ fontWeight: 400, color: '#6b7280' }}> ({ageFromDOB(mobDOBs[m.id]) ?? ''}y)</span>}
-                        <span style={{ fontWeight: 400, color: '#6b7280' }}> ({m.count})</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontWeight: 600 }}>
+                          {m.name}
+                          {mobDOBs[m.id] && <span style={{ fontWeight: 400, color: '#6b7280' }}> ({ageFromDOB(mobDOBs[m.id]) ?? ''}y)</span>}
+                          <span style={{ fontWeight: 400, color: '#6b7280' }}> ({m.count})</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button className='btn' onClick={()=> setExpandedMobId(expandedMobId===m.id?null:m.id)}>{expandedMobId===m.id?'Hide':'Details'}</button>
+                          <button className='btn' onClick={()=> setOpsMobId(m.id)}>Mob Operations</button>
+                          <button className='btn btn--ghost' onClick={() => setHistoryMobId(m.id)}>History</button>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
-                        <select className='select' value={m.paddock_id ?? ''} onChange={e => transferMob(m.id, e.target.value ? parseInt(e.target.value) : null)} style={{ flex: 1 }}>
+
+                      {/* Quick row for paddock/type/DOB/weight to keep visible */}
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
+                        <select className='select' value={m.paddock_id ?? ''} onChange={e => transferMob(m.id, e.target.value ? parseInt(e.target.value) : null)} style={{ minWidth: 160 }}>
                           <option value=''>Unassigned</option>
                           {[...paddocks].sort((a,b)=>a.name.localeCompare(b.name)).map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}
                         </select>
@@ -671,42 +685,71 @@ export default function App() {
                           <option value='other'>Other</option>
                         </select>
                         <input className='input' type='date' value={mobDOBs[m.id] || ''} onChange={e => setMobDOBs(prev => ({ ...prev, [m.id]: e.target.value }))} style={{ maxWidth: 140 }} />
-                        <button className='btn btn--ghost' onClick={() => setHistoryMobId(m.id)}>History</button>
                         <input className='input' type='number' defaultValue={m.avg_weight} placeholder='Approx weight (kg)'
                           onBlur={async (e) => { const val = parseFloat(e.target.value); if (!isNaN(val)) { await axios.patch(`${API}/v1/mobs/${m.id}`, { avg_weight: val }); await load() } }} style={{ width: 140 }} />
-                        <span style={{ fontSize: 12, color: '#6b7280' }}>{m.paddock_id ? paddockLookup.get(m.paddock_id)?.name : 'No paddock'}</span>
+                        <span className='muted' style={{ fontSize: 12 }}>Currently in: {m.paddock_id ? paddockLookup.get(m.paddock_id)?.name : 'Unassigned'}</span>
                       </div>
-                      {/* Inline tags quick-add */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                        {(mobTags[m.id]||[]).map((t,idx)=>(
-                          <span key={idx} title={`${t.ear} ${t.label||''}`.trim()} style={{ display: 'inline-flex', alignItems:'center', gap:4, border:'1px solid #e5e7eb', borderRadius: 999, padding: '2px 6px' }}>
-                            <span style={{ width: 10, height: 10, background: t.color, borderRadius: 999 }} />
-                            <span className='muted' style={{ fontSize: 12 }}>{t.ear}</span>
-                            {t.label && <span className='muted' style={{ fontSize: 12 }}>· {t.label}</span>}
-                          </span>
-                        ))}
-                        <button className='btn' onClick={()=> setTagFormOpen(prev => ({ ...prev, [m.id]: !prev[m.id] }))}>+ Tag</button>
-                      </div>
-                      {tagFormOpen[m.id] && (
-                        <div className='form-compact' style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 6, marginTop: 6 }}>
-                          <select className='select' value={tagEar[m.id] || 'left'} onChange={e => setTagEar(prev => ({ ...prev, [m.id]: e.target.value as any }))}>
-                            <option value='left'>Left</option>
-                            <option value='right'>Right</option>
-                            <option value='unknown'>Unknown</option>
-                          </select>
-                          <input className='input' type='color' value={tagColor[m.id] || '#10b981'} onChange={e => setTagColor(prev => ({ ...prev, [m.id]: e.target.value }))} />
-                          <input className='input' placeholder='Label' value={tagLabel[m.id] || ''} onChange={e => setTagLabel(prev => ({ ...prev, [m.id]: e.target.value }))} />
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button className='btn btn--primary' onClick={() => {
-                              const ear = (tagEar[m.id] || 'left') as 'left'|'right'|'unknown'
-                              const color = tagColor[m.id] || '#10b981'
-                              const label = (tagLabel[m.id] || '').trim() || undefined
-                              setMobTags(prev => ({ ...prev, [m.id]: [...(prev[m.id] || []), { ear, color, label }] }))
-                              setTagFormOpen(prev => ({ ...prev, [m.id]: false }))
-                              setTagLabel(prev => ({ ...prev, [m.id]: '' }))
-                            }}>Add</button>
-                            <button className='btn' onClick={() => setTagFormOpen(prev => ({ ...prev, [m.id]: false }))}>Cancel</button>
+
+                      {expandedMobId === m.id && (
+                        <div className='panel' style={{ marginTop: 8 }}>
+                          <div className='sidebar-tabs' style={{ position: 'static', padding: 0, border: 0, marginBottom: 8 }}>
+                            <button className={`sidebar-tab ${ (mobDetailTab[m.id]||'info')==='info' ? 'sidebar-tab--active' : '' }`} onClick={()=> setMobDetailTab(prev=>({ ...prev, [m.id]:'info'}))}>Info</button>
+                            <button className={`sidebar-tab ${ (mobDetailTab[m.id]||'info')==='tags' ? 'sidebar-tab--active' : '' }`} onClick={()=> setMobDetailTab(prev=>({ ...prev, [m.id]:'tags'}))}>Tags</button>
                           </div>
+
+                          {(mobDetailTab[m.id]||'info') === 'info' && (
+                            <div className='form-compact' style={{ display: 'grid', gap: 8 }}>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div><strong>Name:</strong> {m.name}</div>
+                                {mobEditNameId===m.id ? (
+                                  <>
+                                    <input className='input' value={mobEditName} onChange={e=>setMobEditName(e.target.value)} placeholder='New name' style={{ maxWidth: 200 }} />
+                                    <button className='btn btn--primary' onClick={async()=>{ await axios.patch(`${API}/v1/mobs/${m.id}`, { name: mobEditName || m.name }); setMobEditNameId(null); await load() }}>Save</button>
+                                    <button className='btn' onClick={()=> setMobEditNameId(null)}>Cancel</button>
+                                  </>
+                                ) : (
+                                  <button className='btn' onClick={()=>{ setMobEditNameId(m.id); setMobEditName(m.name) }}>Edit Name</button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {(mobDetailTab[m.id]||'info') === 'tags' && (
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                {(mobTags[m.id]||[]).map((t,idx)=>(
+                                  <span key={idx} title={`${t.ear} ${t.label||''}`.trim()} style={{ display: 'inline-flex', alignItems:'center', gap:4, border:'1px solid #e5e7eb', borderRadius: 999, padding: '2px 6px' }}>
+                                    <span style={{ width: 10, height: 10, background: t.color, borderRadius: 999 }} />
+                                    <span className='muted' style={{ fontSize: 12 }}>{t.ear}</span>
+                                    {t.label && <span className='muted' style={{ fontSize: 12 }}>· {t.label}</span>}
+                                  </span>
+                                ))}
+                                <button className='btn' onClick={()=> setTagFormOpen(prev => ({ ...prev, [m.id]: !prev[m.id] }))}>+ Tag</button>
+                              </div>
+                              {tagFormOpen[m.id] && (
+                                <div className='form-compact' style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 6, marginTop: 6 }}>
+                                  <select className='select' value={tagEar[m.id] || 'left'} onChange={e => setTagEar(prev => ({ ...prev, [m.id]: e.target.value as any }))}>
+                                    <option value='left'>Left</option>
+                                    <option value='right'>Right</option>
+                                    <option value='unknown'>Unknown</option>
+                                  </select>
+                                  <input className='input' type='color' value={tagColor[m.id] || '#10b981'} onChange={e => setTagColor(prev => ({ ...prev, [m.id]: e.target.value }))} />
+                                  <input className='input' placeholder='Label' value={tagLabel[m.id] || ''} onChange={e => setTagLabel(prev => ({ ...prev, [m.id]: e.target.value }))} />
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <button className='btn btn--primary' onClick={() => {
+                                      const ear = (tagEar[m.id] || 'left') as 'left'|'right'|'unknown'
+                                      const color = tagColor[m.id] || '#10b981'
+                                      const label = (tagLabel[m.id] || '').trim() || undefined
+                                      setMobTags(prev => ({ ...prev, [m.id]: [...(prev[m.id] || []), { ear, color, label }] }))
+                                      setTagFormOpen(prev => ({ ...prev, [m.id]: false }))
+                                      setTagLabel(prev => ({ ...prev, [m.id]: '' }))
+                                    }}>Add</button>
+                                    <button className='btn' onClick={() => setTagFormOpen(prev => ({ ...prev, [m.id]: false }))}>Cancel</button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -811,6 +854,16 @@ export default function App() {
           paddocks={paddocks}
           movements={movements.filter(x => x.mob_id === historyMobId)}
           onClose={() => setHistoryMobId(null)}
+          mode="history"
+        />
+      )}
+      {opsMobId !== null && (
+        <HistoryModal
+          mob={mobs.find(x => x.id === opsMobId)!}
+          paddocks={paddocks}
+          movements={movements.filter(x => x.mob_id === opsMobId)}
+          onClose={() => setOpsMobId(null)}
+          mode="operations"
         />
       )}
       {fieldPaddockId !== null && (
@@ -829,8 +882,8 @@ export default function App() {
 }
 
 
-function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddocks: Paddock[]; movements: Movement[]; onClose: () => void }) {
-  const [tab, setTab] = useState<'moves' | 'health' | 'metrics' | 'rams'>('moves')
+function HistoryModal({ mob, paddocks, movements, onClose, mode }: { mob: Mob; paddocks: Paddock[]; movements: Movement[]; onClose: () => void; mode?: 'history' | 'operations' }) {
+  const [tab, setTab] = useState<'moves' | 'health' | 'metrics' | 'rams'>(mode === 'operations' ? 'health' : 'moves')
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [pfilter, setPfilter] = useState('')
@@ -937,10 +990,16 @@ function HistoryModal({ mob, paddocks, movements, onClose }: { mob: Mob; paddock
           <button className="btn" onClick={onClose}>Close</button>
         </div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <button className="btn" onClick={()=>setTab('moves')}>Movements</button>
-          <button className="btn" onClick={()=>setTab('health')}>Health</button>
-          <button className="btn" onClick={()=>setTab('metrics')}>Metrics</button>
-          <button className="btn" onClick={()=>setTab('rams')}>Rams</button>
+          {mode !== 'operations' && (
+            <button className="btn" onClick={()=>setTab('moves')}>Movements</button>
+          )}
+          {mode === 'operations' && (
+            <>
+              <button className={"btn "+(tab==='health'?'btn--primary':'')} onClick={()=>setTab('health')}>Health</button>
+              <button className={"btn "+(tab==='metrics'?'btn--primary':'')} onClick={()=>setTab('metrics')}>Metrics</button>
+              <button className={"btn "+(tab==='rams'?'btn--primary':'')} onClick={()=>setTab('rams')}>Rams</button>
+            </>
+          )}
         </div>
 
         {tab === 'moves' && (
