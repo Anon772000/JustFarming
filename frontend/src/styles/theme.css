@@ -7,6 +7,12 @@
   --panel: #ffffff;
   --muted: #6b7280;
   --border: #e5e7eb;
+
+  /* Bootstrap color alignment */
+  --bs-primary: var(--brand-accent);
+  --bs-success: var(--brand-accent);
+  --bs-border-color: var(--border);
+  --bs-body-font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
 }
 
 * { box-sizing: border-box; }
@@ -37,11 +43,42 @@ h3 { font-size: 14px; }
 
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
 
-.btn { cursor: pointer; border: 0; border-radius: 6px; padding: 8px 12px; font-weight: 600; transition: filter .15s ease; }
+/* Let Bootstrap's .btn drive visuals; keep our ergonomics */
+.btn { cursor: pointer; border-radius: .375rem; padding: .375rem .75rem; font-weight: 600; transition: filter .15s ease; }
 .btn:hover { filter: brightness(0.98); }
 .btn:active { filter: brightness(0.95); }
-.btn--primary { background: var(--brand-accent); color: #fff; }
-.btn--ghost { background: transparent; color: var(--brand-accent); border: 1px solid var(--brand-accent); }
+
+/* Map our variant shorthands to Bootstrap button variables */
+.btn.btn--primary {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--bs-primary);
+  --bs-btn-border-color: var(--bs-primary);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--bs-primary);
+  --bs-btn-hover-border-color: var(--bs-primary);
+  --bs-btn-focus-shadow-rgb: 49, 132, 253;
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--bs-primary);
+  --bs-btn-active-border-color: var(--bs-primary);
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-bg: var(--bs-primary);
+  --bs-btn-disabled-border-color: var(--bs-primary);
+}
+.btn.btn--ghost {
+  --bs-btn-color: var(--bs-primary);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--bs-primary);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--bs-primary);
+  --bs-btn-hover-border-color: var(--bs-primary);
+  --bs-btn-focus-shadow-rgb: 25, 135, 84;
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--bs-primary);
+  --bs-btn-active-border-color: var(--bs-primary);
+  --bs-btn-disabled-color: var(--bs-primary);
+  --bs-btn-disabled-bg: transparent;
+  --bs-btn-disabled-border-color: var(--bs-primary);
+}
 
 .input, .select, .textarea {
   width: 100%;
