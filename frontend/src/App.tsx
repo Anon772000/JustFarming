@@ -196,10 +196,10 @@ export default function App() {
                   <AddRamForm onAdded={async()=>{ const rr = await axios.get(`${API}/v1/sheep/rams`); setRams(rr.data) }} />
                 </div>
                 <h3 className='section-title'>Mobs</h3>
-                <div className='form-compact' style={{ maxHeight: 260, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+                <div className='form-compact mob-grid'>
                   {mobs.length === 0 && <div style={{ padding: 8, fontSize: 13, color: '#6b7280' }}>No mobs yet</div>}
                   {mobs.map(m => (
-                    <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '1fr', padding: 8, borderBottom: '1px solid #f3f4f6' }}>
+                    <div key={m.id} className='panel' style={{ display: 'grid', gridTemplateColumns: '1fr' }}>
                       <div style={{ fontWeight: 600 }}>
                         {m.name}
                         {mobDOBs[m.id] && <span style={{ fontWeight: 400, color: '#6b7280' }}> ({ageFromDOB(mobDOBs[m.id]) ?? ''}y)</span>}
@@ -244,7 +244,7 @@ export default function App() {
                   </select>
                   <div className='form-compact' style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, marginBottom: 6 }}>
                     <select className='select' value={cropType} onChange={e=>{ const t = e.target.value; setCropType(t); if (cropPalette[t]) setCropColor(cropPalette[t]) }}>
-                      <option value=''>Crop type…</option>
+                      <option value=''>Crop type�</option>
                       {Object.keys(cropPalette).sort((a,b)=>a.localeCompare(b)).map(k => (<option key={k} value={k}>{k}</option>))}
                     </select>
                     <input className='input' type='color' value={cropColor} onChange={e=>setCropColor(e.target.value)} title='Crop color' />
@@ -259,7 +259,7 @@ export default function App() {
                     <button className='btn' disabled={!selectedPaddockId} onClick={async()=>{ if(!selectedPaddockId) return; const kind = prompt('Harvest type (bale/harvest)?', 'bale') || 'bale'; const amount = prompt('Amount (e.g., 120 bales or 3.2 t)?') || ''; await axios.post(`${API}/v1/fields/harvest`, { paddock_id: selectedPaddockId, kind, amount: amount || null }) }}>+ Harvest</button>
                   </div>
                   <div style={{ marginTop: 8 }}>
-                    <button className='btn' onClick={()=> setManageOpsOpen(true)}>Manage Operations…</button>
+                    <button className='btn' onClick={()=> setManageOpsOpen(true)}>Manage Operations�</button>
                   </div>
                 </div>
               </>
@@ -660,8 +660,8 @@ export default function App() {
                           <span style={{ fontWeight: 400, color: '#6b7280' }}> ({m.count})</span>
                         </div>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <button className='btn' onClick={()=> setExpandedMobId(expandedMobId===m.id?null:m.id)}>{expandedMobId===m.id?'Hide':'Details'}</button>
-                          <button className='btn' onClick={()=> setOpsMobId(m.id)}>Mob Operations</button>
+                          <button className='btn btn--ghost' onClick={()=> setExpandedMobId(expandedMobId===m.id?null:m.id)}>{expandedMobId===m.id?'Hide':'Details'}</button>
+                          <button className='btn btn--ghost' onClick={()=> setOpsMobId(m.id)}>Mob Operations</button>
                           <button className='btn btn--ghost' onClick={() => setHistoryMobId(m.id)}>History</button>
                         </div>
                       </div>
@@ -721,7 +721,7 @@ export default function App() {
                                   <span key={idx} title={`${t.ear} ${t.label||''}`.trim()} style={{ display: 'inline-flex', alignItems:'center', gap:4, border:'1px solid #e5e7eb', borderRadius: 999, padding: '2px 6px' }}>
                                     <span style={{ width: 10, height: 10, background: t.color, borderRadius: 999 }} />
                                     <span className='muted' style={{ fontSize: 12 }}>{t.ear}</span>
-                                    {t.label && <span className='muted' style={{ fontSize: 12 }}>· {t.label}</span>}
+                                    {t.label && <span className='muted' style={{ fontSize: 12 }}>� {t.label}</span>}
                                   </span>
                                 ))}
                                 <button className='btn' onClick={()=> setTagFormOpen(prev => ({ ...prev, [m.id]: !prev[m.id] }))}>+ Tag</button>
@@ -818,7 +818,7 @@ export default function App() {
             <div>
               <h3 className='section-title' style={{ marginTop: 0 }}>Quick Actions</h3>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button className='btn' onClick={()=> setManageOpsOpen(true)}>Manage Operations�</button>
+                <button className='btn' onClick={()=> setManageOpsOpen(true)}>Manage Operations?</button>
               </div>
             </div>
 
@@ -983,7 +983,7 @@ function HistoryModal({ mob, paddocks, movements, onClose, mode }: { mob: Mob; p
   const [fpNotes, setFpNotes] = useState('')
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300 }} onClick={onClose}>
       <div className="panel" style={{ width: 860, maxHeight: '85vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <h3 className="section-title" style={{ margin: 0 }}>History ? {mob.name}</h3>

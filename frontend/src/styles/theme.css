@@ -163,3 +163,9 @@ h3 { font-size: 14px; }
   .form-compact .row-2 { grid-template-columns: 1fr 1fr; }
   .form-compact .row-3 { grid-template-columns: 1fr 1fr 1fr; }
 }
+
+/* Mob grid cards */
+.mob-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+@media (min-width: 1024px) {
+  .mob-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
