@@ -12,6 +12,7 @@ const API = (import.meta as any).env?.VITE_API_BASE || '/api'
 const cropPalette: Record<string, string> = {
   'Wheat': '#E5C07B',
   'Barley': '#D4B157',
+  'Ryegrass': '#E5C07B',
   'Corn': '#B5E550',
   'Maize': '#9ED93C',
   'Canola': '#FFD700',
