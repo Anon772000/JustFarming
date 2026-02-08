@@ -94,7 +94,7 @@ export default function App() {
   const [tagEar, setTagEar] = useState<Record<number, 'left'|'right'|'unknown'>>({})
   const [tagColor, setTagColor] = useState<Record<number, string>>({})
   const [tagLabel, setTagLabel] = useState<Record<number, string>>({})
-  const [opModal, setOpModal] = useState<null | { type: 'spraying'|'sowing'|'fertiliser'|'cut'|'harvest'; paddockId: number }>(null)
+  const [opModal, setOpModal] = useState<null | { type: 'spraying'|'sowing'|'fertiliser'|'cut'|'harvest'|'observation'; paddockId: number }>(null)
 
   const load = async () => {
     const [pRes, mRes, mvRes, rRes] = await Promise.all([
@@ -821,6 +821,9 @@ export default function App() {
                     <div className='col-6 col-md-3'>
                       <button className='btn w-100' disabled={!selectedPaddockId} onClick={()=>{ if(!selectedPaddockId) return; setOpModal({ type: 'harvest', paddockId: selectedPaddockId as number }) }}>+ Harvest</button>
                     </div>
+                    <div className='col-6 col-md-3'>
+                      <button className='btn w-100' disabled={!selectedPaddockId} onClick={()=>{ if(!selectedPaddockId) return; setOpModal({ type: 'observation', paddockId: selectedPaddockId as number }) }}>+ Observation</button>
+                    </div>
                     <div className='col-12 col-md-3'>
                       <button className='btn btn-outline-primary w-100' onClick={()=> setManageOpsOpen(true)}>Manage Operations.</button>
                     </div>
@@ -949,7 +952,7 @@ export default function App() {
   )
 }
 
-function FieldOpModal({ type, paddockId, paddockName, onClose, onSaved, paddocks, cropPalette }: { type: 'spraying'|'sowing'|'fertiliser'|'cut'|'harvest'; paddockId: number; paddockName: string; onClose: ()=>void; onSaved: ()=>void; paddocks: Paddock[]; cropPalette: Record<string,string> }) {
+function FieldOpModal({ type, paddockId, paddockName, onClose, onSaved, paddocks, cropPalette }: { type: 'spraying'|'sowing'|'fertiliser'|'cut'|'harvest'|'observation'; paddockId: number; paddockName: string; onClose: ()=>void; onSaved: ()=>void; paddocks: Paddock[]; cropPalette: Record<string,string> }) {
   const [date, setDate] = useState<string>('')
   const [chemical, setChemical] = useState('')
   const [seed, setSeed] = useState('')
@@ -964,7 +967,12 @@ function FieldOpModal({ type, paddockId, paddockName, onClose, onSaved, paddocks
     for (const pid of ids) {
       const payload: any = { paddock_id: pid }
       if (date) payload.date = date
-      if (notes.trim()) payload.notes = notes.trim()
+      if (type === 'observation') {
+        if (!notes.trim()) continue
+        payload.notes = notes.trim()
+      } else if (notes.trim()) {
+        payload.notes = notes.trim()
+      }
       if (type === 'spraying') { if (!chemical.trim()) continue; payload.chemical = chemical.trim(); if (rate.trim()) payload.rate = rate.trim() }
       if (type === 'sowing')   { if (!seed.trim()) continue;     payload.seed = seed.trim();       if (rate.trim()) payload.rate = rate.trim() }
       if (type === 'fertiliser'){ if (!product.trim()) continue;  payload.product = product.trim(); if (rate.trim()) payload.rate = rate.trim() }
@@ -1035,7 +1043,7 @@ function FieldOpModal({ type, paddockId, paddockName, onClose, onSaved, paddocks
               <div className='col-6'><input className='input' placeholder='Amount (e.g., 120 bales or 3.2 t)' value={amount} onChange={e=>setAmount(e.target.value)} /></div>
             </>
           )}
-          <div className='col-12'><input className='input' placeholder='Notes (optional)' value={notes} onChange={e=>setNotes(e.target.value)} /></div>
+          <div className='col-12'><input className='input' placeholder={type === 'observation' ? 'Observation' : 'Notes (optional)'} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
         </div>
         <div style={{ marginTop: 10 }}>
           <button className='btn btn-primary' onClick={save}>Save</button>
@@ -1450,20 +1458,22 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
   const [fert, setFert] = useState<any[]>([])
   const [cut, setCut] = useState<any[]>([])
   const [harvest, setHarvest] = useState<any[]>([])
+  const [observation, setObservation] = useState<any[]>([])
   const [typeFilter, setTypeFilter] = useState('')
   const [paddockFilter, setPaddockFilter] = useState<number | ''>('')
   const [query, setQuery] = useState('')
   const [editKey, setEditKey] = useState<string | null>(null)
   const [editFields, setEditFields] = useState<Record<string, any>>({})
   useEffect(() => { (async()=>{
-    const [s1,s2,s3,s4,s5] = await Promise.all([
+    const [s1,s2,s3,s4,s5,s6] = await Promise.all([
       axios.get(`${API}/v1/fields/spraying`),
       axios.get(`${API}/v1/fields/sowing`),
       axios.get(`${API}/v1/fields/fertiliser`),
       axios.get(`${API}/v1/fields/cut`),
       axios.get(`${API}/v1/fields/harvest`),
+      axios.get(`${API}/v1/fields/observation`),
     ])
-    setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data)
+    setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data); setObservation(s6.data)
   })() }, [])
   const timeline = useMemo(() => {
     const add = (arr:any[], type:string) => arr.map(r => ({ type, date: r.date, data: r }))
@@ -1473,6 +1483,7 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
       ...add(fert, 'Fertiliser'),
       ...add(cut, 'Cut'),
       ...add(harvest, 'Harvest'),
+      ...add(observation, 'Observation'),
     ] as any[]
     if (typeFilter) items = items.filter(i => i.type === typeFilter)
     if (paddockFilter) items = items.filter(i => i.data.paddock_id === paddockFilter)
@@ -1485,10 +1496,10 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
       })
     }
     return items.sort((a,b)=> new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [spraying, sowing, fert, cut, harvest, typeFilter, paddockFilter, query])
+  }, [spraying, sowing, fert, cut, harvest, observation, typeFilter, paddockFilter, query])
   function endpointFor(type: string, id: number) {
     const base = type.toLowerCase()
-    const key = base === 'fertiliser' ? 'fertiliser' : base === 'spraying' ? 'spraying' : base === 'sowing' ? 'sowing' : base === 'cut' ? 'cut' : 'harvest'
+    const key = base === 'fertiliser' ? 'fertiliser' : base === 'spraying' ? 'spraying' : base === 'sowing' ? 'sowing' : base === 'cut' ? 'cut' : base === 'harvest' ? 'harvest' : 'observation'
     return `${API}/v1/fields/${key}/${id}`
   }
   const nameOf = (pid:number) => paddocks.find(p=>p.id===pid)?.name || `Paddock ${pid}`
@@ -1509,6 +1520,7 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
                 <option value='Fertiliser'>Fertiliser</option>
                 <option value='Cut'>Cut</option>
                 <option value='Harvest'>Harvest</option>
+                <option value='Observation'>Observation</option>
               </select>
             </div>
             <div className='col-12 col-md-4'>
@@ -1540,6 +1552,7 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
                       {e.type==='Fertiliser' && (<>{e.data.product}{e.data.rate?` (${e.data.rate})`:''}</>)}
                       {e.type==='Cut' && (<>{e.data.notes || ''}</>)}
                       {e.type==='Harvest' && (<>{e.data.kind}{e.data.amount?` (${e.data.amount})`:''}</>)}
+                      {e.type==='Observation' && (<>{e.data.notes || ''}</>)}
                     </div>
                   ) : (
                     <div className='col-12 col-md-6'>
@@ -1549,7 +1562,7 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
                         {e.type==='Sowing' && (<><div className='col-12 col-sm-4'><input className='input' placeholder='Seed' defaultValue={e.data.seed||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), seed: ev.target.value } }))} /></div><div className='col-12 col-sm-4'><input className='input' placeholder='Rate' defaultValue={e.data.rate||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), rate: ev.target.value } }))} /></div></>)}
                         {e.type==='Fertiliser' && (<><div className='col-12 col-sm-4'><input className='input' placeholder='Product' defaultValue={e.data.product||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), product: ev.target.value } }))} /></div><div className='col-12 col-sm-4'><input className='input' placeholder='Rate' defaultValue={e.data.rate||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), rate: ev.target.value } }))} /></div></>)}
                         {e.type==='Harvest' && (<><div className='col-12 col-sm-4'><input className='input' placeholder='Kind' defaultValue={e.data.kind||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), kind: ev.target.value } }))} /></div><div className='col-12 col-sm-4'><input className='input' placeholder='Amount' defaultValue={e.data.amount||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), amount: ev.target.value } }))} /></div></>)}
-                        {(e.type==='Spraying'||e.type==='Sowing'||e.type==='Fertiliser'||e.type==='Cut'||e.type==='Harvest') && (<div className='col-12'><input className='input' placeholder='Notes' defaultValue={e.data.notes||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), notes: ev.target.value } }))} /></div>)}
+                        {(e.type==='Spraying'||e.type==='Sowing'||e.type==='Fertiliser'||e.type==='Cut'||e.type==='Harvest'||e.type==='Observation') && (<div className='col-12'><input className='input' placeholder='Notes' defaultValue={e.data.notes||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), notes: ev.target.value } }))} /></div>)}
                       </div>
                     </div>
                   )}
@@ -1560,14 +1573,15 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
                         <button className='btn btn--ghost' onClick={async()=>{
                           if(!confirm('Delete record?')) return
                           await axios.delete(endpointFor(e.type, e.data.id))
-                          const [s1,s2,s3,s4,s5] = await Promise.all([
+                          const [s1,s2,s3,s4,s5,s6] = await Promise.all([
                             axios.get(`${API}/v1/fields/spraying`),
                             axios.get(`${API}/v1/fields/sowing`),
                             axios.get(`${API}/v1/fields/fertiliser`),
                             axios.get(`${API}/v1/fields/cut`),
                             axios.get(`${API}/v1/fields/harvest`),
+                            axios.get(`${API}/v1/fields/observation`),
                           ])
-                          setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data)
+                          setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data); setObservation(s6.data)
                         }}>Delete</button>
                       </>
                     ) : (
@@ -1582,18 +1596,20 @@ function ManageOperationsModal({ paddocks, onClose }: { paddocks: Paddock[]; onC
                             'Fertiliser': ['product','rate','notes'],
                             'Cut': ['notes'],
                             'Harvest': ['kind','amount','notes'],
+                            'Observation': ['notes'],
                           }
                           for (const f of (mapFields[e.type]||[])) { if (fields[f] !== undefined) payload[f] = fields[f] || undefined }
                           await axios.patch(endpointFor(e.type, e.data.id), payload)
                           setEditKey(null)
-                          const [s1,s2,s3,s4,s5] = await Promise.all([
+                          const [s1,s2,s3,s4,s5,s6] = await Promise.all([
                             axios.get(`${API}/v1/fields/spraying`),
                             axios.get(`${API}/v1/fields/sowing`),
                             axios.get(`${API}/v1/fields/fertiliser`),
                             axios.get(`${API}/v1/fields/cut`),
                             axios.get(`${API}/v1/fields/harvest`),
+                            axios.get(`${API}/v1/fields/observation`),
                           ])
-                          setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data)
+                          setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data); setObservation(s6.data)
                         }}>Save</button>
                         <button className='btn' onClick={()=> setEditKey(null)}>Cancel</button>
                       </>
@@ -1615,6 +1631,7 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
   const [fert, setFert] = useState<any[]>([])
   const [cut, setCut] = useState<any[]>([])
   const [harvest, setHarvest] = useState<any[]>([])
+  const [observation, setObservation] = useState<any[]>([])
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('')
@@ -1623,14 +1640,15 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
   const [editFields, setEditFields] = useState<Record<string, any>>({})
   useEffect(() => {
     (async () => {
-      const [s1,s2,s3,s4,s5] = await Promise.all([
+      const [s1,s2,s3,s4,s5,s6] = await Promise.all([
         axios.get(`${API}/v1/fields/spraying`, { params: { paddock_id: paddock.id } }),
         axios.get(`${API}/v1/fields/sowing`, { params: { paddock_id: paddock.id } }),
         axios.get(`${API}/v1/fields/fertiliser`, { params: { paddock_id: paddock.id } }),
         axios.get(`${API}/v1/fields/cut`, { params: { paddock_id: paddock.id } }),
         axios.get(`${API}/v1/fields/harvest`, { params: { paddock_id: paddock.id } }),
+        axios.get(`${API}/v1/fields/observation`, { params: { paddock_id: paddock.id } }),
       ])
-      setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data)
+      setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data); setObservation(s6.data)
     })()
   }, [paddock.id])
 
@@ -1655,6 +1673,7 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
       ...add(fert, 'Fertiliser'),
       ...add(cut, 'Cut'),
       ...add(harvest, 'Harvest'),
+      ...add(observation, 'Observation'),
     ] as any[]
     // filter by type
     if (typeFilter) items = items.filter(i => i.type === typeFilter)
@@ -1673,11 +1692,11 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
       })
     }
     return items.sort((a,b)=> new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [spraying, sowing, fert, cut, harvest, start, end, typeFilter, query])
+  }, [spraying, sowing, fert, cut, harvest, observation, start, end, typeFilter, query])
 
   function endpointFor(type: string, id: number) {
     const base = type.toLowerCase()
-    const key = base === 'fertiliser' ? 'fertiliser' : base === 'spraying' ? 'spraying' : base === 'sowing' ? 'sowing' : base === 'cut' ? 'cut' : 'harvest'
+    const key = base === 'fertiliser' ? 'fertiliser' : base === 'spraying' ? 'spraying' : base === 'sowing' ? 'sowing' : base === 'cut' ? 'cut' : base === 'harvest' ? 'harvest' : 'observation'
     return `${API}/v1/fields/${key}/${id}`
   }
 
@@ -1701,6 +1720,7 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
             <option value="Fertiliser">Fertiliser</option>
             <option value="Cut">Cut</option>
             <option value="Harvest">Harvest</option>
+            <option value="Observation">Observation</option>
           </select>
           <input className="input" placeholder="Filter by product/chemical?" value={query} onChange={e=>setQuery(e.target.value)} />
         </div>
@@ -1724,6 +1744,7 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
                       {e.type==='Fertiliser' && (<>{e.data.product}{e.data.rate?` (${e.data.rate})`:''}</>)}
                       {e.type==='Cut' && (<>{e.data.notes || ''}</>)}
                       {e.type==='Harvest' && (<>{e.data.kind}{e.data.amount?` (${e.data.amount})`:''}</>)}
+                      {e.type==='Observation' && (<>{e.data.notes || ''}</>)}
                     </div>
                   ) : (
                     <div className="form-compact" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
@@ -1752,7 +1773,7 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
                           <input className="input" placeholder="Amount" defaultValue={e.data.amount||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), amount: ev.target.value } }))} />
                         </>
                       )}
-                      {(e.type==='Spraying'||e.type==='Sowing'||e.type==='Fertiliser'||e.type==='Cut'||e.type==='Harvest') && (
+                      {(e.type==='Spraying'||e.type==='Sowing'||e.type==='Fertiliser'||e.type==='Cut'||e.type==='Harvest'||e.type==='Observation') && (
                         <input className="input" placeholder="Notes" defaultValue={e.data.notes||''} onChange={ev=>setEditFields(prev=>({ ...prev, [key]: { ...(prev[key]||{}), notes: ev.target.value } }))} />
                       )}
                     </div>
@@ -1765,14 +1786,15 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
                           if(!confirm('Delete record?')) return
                           await axios.delete(endpointFor(e.type, e.data.id))
                           // reload lists
-                          const [s1,s2,s3,s4,s5] = await Promise.all([
+                          const [s1,s2,s3,s4,s5,s6] = await Promise.all([
                             axios.get(`${API}/v1/fields/spraying`, { params: { paddock_id: paddock.id } }),
                             axios.get(`${API}/v1/fields/sowing`, { params: { paddock_id: paddock.id } }),
                             axios.get(`${API}/v1/fields/fertiliser`, { params: { paddock_id: paddock.id } }),
                             axios.get(`${API}/v1/fields/cut`, { params: { paddock_id: paddock.id } }),
                             axios.get(`${API}/v1/fields/harvest`, { params: { paddock_id: paddock.id } }),
+                            axios.get(`${API}/v1/fields/observation`, { params: { paddock_id: paddock.id } }),
                           ])
-                          setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data)
+                          setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data); setObservation(s6.data)
                         }}>Delete</button>
                       </>
                     ) : (
@@ -1787,20 +1809,22 @@ function FieldHistoryModal({ paddock, mobs, movements, onClose }: { paddock: Pad
                             'Fertiliser': ['product','rate','notes'],
                             'Cut': ['notes'],
                             'Harvest': ['kind','amount','notes'],
+                            'Observation': ['notes'],
                           }
                           for (const f of (mapFields[e.type]||[])) {
                             if (fields[f] !== undefined) payload[f] = fields[f] || undefined
                           }
                           await axios.patch(endpointFor(e.type, e.data.id), payload)
                           setEditKey(null)
-                          const [s1,s2,s3,s4,s5] = await Promise.all([
+                          const [s1,s2,s3,s4,s5,s6] = await Promise.all([
                             axios.get(`${API}/v1/fields/spraying`, { params: { paddock_id: paddock.id } }),
                             axios.get(`${API}/v1/fields/sowing`, { params: { paddock_id: paddock.id } }),
                             axios.get(`${API}/v1/fields/fertiliser`, { params: { paddock_id: paddock.id } }),
                             axios.get(`${API}/v1/fields/cut`, { params: { paddock_id: paddock.id } }),
                             axios.get(`${API}/v1/fields/harvest`, { params: { paddock_id: paddock.id } }),
+                            axios.get(`${API}/v1/fields/observation`, { params: { paddock_id: paddock.id } }),
                           ])
-                          setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data)
+                          setSpraying(s1.data); setSowing(s2.data); setFert(s3.data); setCut(s4.data); setHarvest(s5.data); setObservation(s6.data)
                         }}>Save</button>
                         <button className="btn" onClick={()=> setEditKey(null)}>Cancel</button>
                       </>

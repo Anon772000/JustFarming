@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select
 from ..v1_deps import get_session
 from ...core.models import (
-    SprayRecord, SowingRecord, FertiliserRecord, CutRecord, HarvestRecord
+    SprayRecord, SowingRecord, FertiliserRecord, CutRecord, HarvestRecord, ObservationRecord
 )
 from ...core.schemas import (
     SprayRecordCreate, SprayRecordOut, SprayRecordUpdate,
@@ -10,6 +10,7 @@ from ...core.schemas import (
     FertiliserRecordCreate, FertiliserRecordOut, FertiliserRecordUpdate,
     CutRecordCreate, CutRecordOut, CutRecordUpdate,
     HarvestRecordCreate, HarvestRecordOut, HarvestRecordUpdate,
+    ObservationRecordCreate, ObservationRecordOut, ObservationRecordUpdate,
 )
 
 router = APIRouter()
@@ -188,6 +189,42 @@ async def update_harvest(rec_id: int, data: HarvestRecordUpdate, session: get_se
 @router.delete("/harvest/{rec_id}", status_code=204)
 async def delete_harvest(rec_id: int, session: get_session):
     rec = await session.get(HarvestRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    await session.delete(rec)
+    await session.commit()
+    return None
+
+@router.get("/observation", response_model=list[ObservationRecordOut])
+async def list_observation(paddock_id: int | None = Query(None), session: get_session = None):
+    stmt = select(ObservationRecord)
+    if paddock_id is not None:
+        stmt = stmt.where(ObservationRecord.paddock_id == paddock_id)
+    result = await session.execute(stmt)
+    return [r for r in result.scalars().all()]
+
+@router.post("/observation", response_model=ObservationRecordOut)
+async def create_observation(data: ObservationRecordCreate, session: get_session):
+    rec = ObservationRecord(paddock_id=data.paddock_id, date=data.date, notes=data.notes)
+    session.add(rec)
+    await session.commit()
+    await session.refresh(rec)
+    return rec
+
+@router.patch("/observation/{rec_id}", response_model=ObservationRecordOut)
+async def update_observation(rec_id: int, data: ObservationRecordUpdate, session: get_session):
+    rec = await session.get(ObservationRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Record not found")
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(rec, field, value)
+    await session.commit()
+    await session.refresh(rec)
+    return rec
+
+@router.delete("/observation/{rec_id}", status_code=204)
+async def delete_observation(rec_id: int, session: get_session):
+    rec = await session.get(ObservationRecord, rec_id)
     if not rec:
         raise HTTPException(status_code=404, detail="Record not found")
     await session.delete(rec)

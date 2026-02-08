@@ -332,3 +332,21 @@ class HarvestRecordUpdate(BaseModel):
     kind: Optional[str] = None
     amount: Optional[str] = None
     notes: Optional[str] = None
+
+class ObservationRecordCreate(BaseModel):
+    paddock_id: int
+    date: Optional[datetime] = None
+    notes: str
+
+class ObservationRecordOut(BaseModel):
+    id: int
+    paddock_id: int
+    date: datetime
+    notes: str
+    class Config:
+        from_attributes = True
+
+class ObservationRecordUpdate(BaseModel):
+    paddock_id: Optional[int] = None
+    date: Optional[datetime] = None
+    notes: Optional[str] = None

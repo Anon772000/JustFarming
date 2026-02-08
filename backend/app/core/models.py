@@ -149,3 +149,10 @@ class HarvestRecord(Base):
     kind: Mapped[str] = mapped_column(String(50))  # e.g., 'bale' or 'harvest'
     amount: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g., '120 bales' or '3.2 t'
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+class ObservationRecord(Base):
+    __tablename__ = "observation_records"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    paddock_id: Mapped[int] = mapped_column(ForeignKey("paddocks.id"))
+    date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    notes: Mapped[str] = mapped_column(Text)
