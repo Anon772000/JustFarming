@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from ..v1_deps import get_session
 from ...core.models import (
-    SprayRecord, SowingRecord, FertiliserRecord, CutRecord, HarvestRecord, ObservationRecord
+    SprayRecord, SowingRecord, FertiliserRecord, CutRecord, HarvestRecord, ObservationRecord, Paddock
 )
 from ...core.schemas import (
     SprayRecordCreate, SprayRecordOut, SprayRecordUpdate,
@@ -205,9 +206,17 @@ async def list_observation(paddock_id: int | None = Query(None), session: get_se
 
 @router.post("/observation", response_model=ObservationRecordOut)
 async def create_observation(data: ObservationRecordCreate, session: get_session):
-    rec = ObservationRecord(paddock_id=data.paddock_id, date=data.date, notes=data.notes)
+    if not await session.get(Paddock, data.paddock_id):
+        raise HTTPException(status_code=404, detail="Paddock not found")
+    rec = ObservationRecord(paddock_id=data.paddock_id, notes=data.notes)
+    if data.date is not None:
+        rec.date = data.date
     session.add(rec)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail="Invalid observation payload")
     await session.refresh(rec)
     return rec
 
@@ -216,9 +225,18 @@ async def update_observation(rec_id: int, data: ObservationRecordUpdate, session
     rec = await session.get(ObservationRecord, rec_id)
     if not rec:
         raise HTTPException(status_code=404, detail="Record not found")
-    for field, value in data.dict(exclude_unset=True).items():
+    payload = data.dict(exclude_unset=True)
+    if payload.get("paddock_id") is not None and not await session.get(Paddock, payload["paddock_id"]):
+        raise HTTPException(status_code=404, detail="Paddock not found")
+    for field, value in payload.items():
+        if field in {"date", "notes"} and value is None:
+            continue
         setattr(rec, field, value)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail="Invalid observation payload")
     await session.refresh(rec)
     return rec
 
