@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, ForeignKey, DateTime, Text, JSON
+from sqlalchemy import Integer, String, ForeignKey, DateTime, Text, JSON, Boolean, UniqueConstraint
 from .db import Base
 from datetime import datetime
 
@@ -20,6 +20,9 @@ class Mob(Base):
     count: Mapped[int] = mapped_column(Integer, default=0)
     avg_weight: Mapped[float] = mapped_column(default=0.0)
     paddock_id: Mapped[int | None] = mapped_column(ForeignKey("paddocks.id"), nullable=True)
+    sheep_class: Mapped[str | None] = mapped_column(String(40), nullable=True)  # ewe, ram, lamb, wether, mixed
+    year_group: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sheep_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     paddock: Mapped[Paddock | None] = relationship(back_populates="mobs")
 
 class Movement(Base):
@@ -156,3 +159,40 @@ class ObservationRecord(Base):
     paddock_id: Mapped[int] = mapped_column(ForeignKey("paddocks.id"))
     date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     notes: Mapped[str] = mapped_column(Text)
+    images: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+
+class MobFieldAllocation(Base):
+    __tablename__ = "mob_field_allocations"
+    __table_args__ = (
+        UniqueConstraint("mob_id", "paddock_id", name="uq_mob_field_allocations_mob_paddock"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    mob_id: Mapped[int] = mapped_column(ForeignKey("mobs.id"))
+    paddock_id: Mapped[int] = mapped_column(ForeignKey("paddocks.id"))
+    assigned_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+class SheepDailyLog(Base):
+    __tablename__ = "sheep_daily_logs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    mob_id: Mapped[int] = mapped_column(ForeignKey("mobs.id"), index=True)
+    date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    paddock_ids: Mapped[list[int]] = mapped_column(JSON, nullable=False, default=list)
+    water_checked: Mapped[bool] = mapped_column(Boolean, default=True)
+    feed_checked: Mapped[bool] = mapped_column(Boolean, default=True)
+    deaths_count: Mapped[int] = mapped_column(Integer, default=0)
+    death_cause: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    images: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+
+class SheepMobEvent(Base):
+    __tablename__ = "sheep_mob_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    mob_id: Mapped[int] = mapped_column(ForeignKey("mobs.id"), index=True)
+    event_type: Mapped[str] = mapped_column(String(50), index=True)  # joining, lambing, lamb_marking, tagging, year_update, misc
+    date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    related_mob_id: Mapped[int | None] = mapped_column(ForeignKey("mobs.id"), nullable=True)
+    count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    value: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    images: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)

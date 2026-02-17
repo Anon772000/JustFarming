@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from ..v1_deps import get_session
-from ...core.models import Movement, Mob, Paddock
+from ...core.models import Movement, Mob, Paddock, MobFieldAllocation
 from ...core.schemas import MovementCreate, MovementOut
 
 router = APIRouter()
@@ -24,6 +24,10 @@ async def create_movement(data: MovementCreate, session: get_session):
         if not await session.get(Paddock, data.to_paddock_id):
             raise HTTPException(404, "Target paddock not found")
     mob.paddock_id = data.to_paddock_id
+    # Legacy movement endpoint represents a single move, so replace active paddocks.
+    await session.execute(delete(MobFieldAllocation).where(MobFieldAllocation.mob_id == data.mob_id))
+    if data.to_paddock_id is not None:
+        session.add(MobFieldAllocation(mob_id=data.mob_id, paddock_id=data.to_paddock_id))
     await session.commit()
     await session.refresh(mv)
     return mv

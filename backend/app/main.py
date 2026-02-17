@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from .core.config import settings
 from .core.db import init_db
 from .api.v1.routes_paddocks import router as paddock_router
@@ -13,6 +15,9 @@ from .api.v1.routes_fields import router as fields_router
 import json
 
 app = FastAPI(title="JustFarming API", version="0.1.0")
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/api/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 def parse_cors(origins_raw: str) -> tuple[list[str], str | None, bool]:
     # returns (allow_origins, allow_origin_regex, allow_credentials)

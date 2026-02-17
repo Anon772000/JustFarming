@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Query, HTTPException
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, Query, HTTPException, UploadFile, File
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from ..v1_deps import get_session
@@ -15,6 +18,27 @@ from ...core.schemas import (
 )
 
 router = APIRouter()
+OBSERVATION_UPLOAD_DIR = Path("uploads/observations")
+OBSERVATION_MAX_IMAGE_BYTES = 10 * 1024 * 1024
+OBSERVATION_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+OBSERVATION_IMAGE_MIME_TO_EXT = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+}
+
+def _clean_observation_images(images: list[str] | None) -> list[str]:
+    if not images:
+        return []
+    cleaned: list[str] = []
+    for img in images:
+        if not isinstance(img, str):
+            continue
+        value = img.strip()
+        if value:
+            cleaned.append(value)
+    return cleaned
 
 @router.get("/spraying", response_model=list[SprayRecordOut])
 async def list_spraying(paddock_id: int | None = Query(None), session: get_session = None):
@@ -208,7 +232,11 @@ async def list_observation(paddock_id: int | None = Query(None), session: get_se
 async def create_observation(data: ObservationRecordCreate, session: get_session):
     if not await session.get(Paddock, data.paddock_id):
         raise HTTPException(status_code=404, detail="Paddock not found")
-    rec = ObservationRecord(paddock_id=data.paddock_id, notes=data.notes)
+    rec = ObservationRecord(
+        paddock_id=data.paddock_id,
+        notes=data.notes,
+        images=_clean_observation_images(data.images),
+    )
     if data.date is not None:
         rec.date = data.date
     session.add(rec)
@@ -231,6 +259,11 @@ async def update_observation(rec_id: int, data: ObservationRecordUpdate, session
     for field, value in payload.items():
         if field in {"date", "notes"} and value is None:
             continue
+        if field == "images":
+            if value is None:
+                continue
+            setattr(rec, field, _clean_observation_images(value))
+            continue
         setattr(rec, field, value)
     try:
         await session.commit()
@@ -248,3 +281,26 @@ async def delete_observation(rec_id: int, session: get_session):
     await session.delete(rec)
     await session.commit()
     return None
+
+@router.post("/observation/images")
+async def upload_observation_image(file: UploadFile = File(...)):
+    filename = file.filename or ""
+    suffix = Path(filename).suffix.lower()
+    mime = (file.content_type or "").lower()
+    ext = OBSERVATION_IMAGE_MIME_TO_EXT.get(mime)
+    if ext is None and suffix in OBSERVATION_IMAGE_EXTENSIONS:
+        ext = ".jpg" if suffix == ".jpeg" else suffix
+    if ext is None:
+        raise HTTPException(status_code=400, detail="Unsupported image type")
+
+    payload = await file.read()
+    if not payload:
+        raise HTTPException(status_code=400, detail="Empty image")
+    if len(payload) > OBSERVATION_MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="Image too large (max 10MB)")
+
+    OBSERVATION_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    stored_name = f"{uuid4().hex}{ext}"
+    dest = OBSERVATION_UPLOAD_DIR / stored_name
+    dest.write_bytes(payload)
+    return {"url": f"/api/uploads/observations/{stored_name}"}

@@ -16,3 +16,5 @@ farm (1).kml
 npm-debug.log*
 yarn-error.log
 
+# Uploaded observation images
+backend/uploads/

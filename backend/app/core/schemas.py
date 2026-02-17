@@ -31,6 +31,9 @@ class MobCreate(BaseModel):
     count: int = 0
     avg_weight: float = 0.0
     paddock_id: Optional[int] = None
+    sheep_class: Optional[str] = None
+    year_group: Optional[int] = None
+    sheep_tags: list[str] = Field(default_factory=list)
 
 class MobOut(BaseModel):
     id: int
@@ -38,6 +41,10 @@ class MobOut(BaseModel):
     count: int
     avg_weight: float
     paddock_id: Optional[int] = None
+    paddock_ids: list[int] = Field(default_factory=list)
+    sheep_class: Optional[str] = None
+    year_group: Optional[int] = None
+    sheep_tags: list[str] = Field(default_factory=list)
     class Config:
         from_attributes = True
 
@@ -46,6 +53,29 @@ class MobUpdate(BaseModel):
     count: Optional[int] = None
     avg_weight: Optional[float] = None
     paddock_id: Optional[int] = None
+    sheep_class: Optional[str] = None
+    year_group: Optional[int] = None
+    sheep_tags: Optional[list[str]] = None
+
+class MobSplitItem(BaseModel):
+    mob_id: int
+    count: int
+
+class MobCreateFromMobs(BaseModel):
+    name: str
+    avg_weight: Optional[float] = None
+    sheep_class: Optional[str] = None
+    year_group: Optional[int] = None
+    sheep_tags: list[str] = Field(default_factory=list)
+    parts: list[MobSplitItem] = Field(default_factory=list)
+
+class MobPaddockSet(BaseModel):
+    paddock_ids: list[int] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+class MobPaddocksOut(BaseModel):
+    mob_id: int
+    paddock_ids: list[int] = Field(default_factory=list)
 
 class MovementCreate(BaseModel):
     mob_id: int
@@ -337,16 +367,92 @@ class ObservationRecordCreate(BaseModel):
     paddock_id: int
     date: Optional[datetime] = None
     notes: str
+    images: list[str] = Field(default_factory=list)
 
 class ObservationRecordOut(BaseModel):
     id: int
     paddock_id: int
     date: datetime
     notes: str
+    images: Optional[list[str]] = Field(default_factory=list)
     class Config:
         from_attributes = True
 
 class ObservationRecordUpdate(BaseModel):
     paddock_id: Optional[int] = None
+    date: Optional[datetime] = None
+    notes: Optional[str] = None
+    images: Optional[list[str]] = None
+
+class SheepDailyLogCreate(BaseModel):
+    mob_id: int
+    date: Optional[datetime] = None
+    paddock_ids: list[int] = Field(default_factory=list)
+    water_checked: bool = True
+    feed_checked: bool = True
+    deaths_count: int = 0
+    death_cause: Optional[str] = None
+    notes: Optional[str] = None
+    images: list[str] = Field(default_factory=list)
+
+class SheepDailyLogOut(BaseModel):
+    id: int
+    mob_id: int
+    date: datetime
+    paddock_ids: list[int] = Field(default_factory=list)
+    water_checked: bool
+    feed_checked: bool
+    deaths_count: int
+    death_cause: Optional[str] = None
+    notes: Optional[str] = None
+    images: list[str] = Field(default_factory=list)
+    class Config:
+        from_attributes = True
+
+class SheepDailyLogUpdate(BaseModel):
+    date: Optional[datetime] = None
+    paddock_ids: Optional[list[int]] = None
+    water_checked: Optional[bool] = None
+    feed_checked: Optional[bool] = None
+    deaths_count: Optional[int] = None
+    death_cause: Optional[str] = None
+    notes: Optional[str] = None
+    images: Optional[list[str]] = None
+
+class SheepMobEventCreate(BaseModel):
+    mob_id: int
+    event_type: str
+    date: Optional[datetime] = None
+    related_mob_id: Optional[int] = None
+    count: Optional[int] = None
+    value: Optional[str] = None
+    notes: Optional[str] = None
+    images: list[str] = Field(default_factory=list)
+
+class SheepMobEventOut(BaseModel):
+    id: int
+    mob_id: int
+    event_type: str
+    date: datetime
+    related_mob_id: Optional[int] = None
+    count: Optional[int] = None
+    value: Optional[str] = None
+    notes: Optional[str] = None
+    images: list[str] = Field(default_factory=list)
+    class Config:
+        from_attributes = True
+
+class SheepMobEventUpdate(BaseModel):
+    date: Optional[datetime] = None
+    related_mob_id: Optional[int] = None
+    count: Optional[int] = None
+    value: Optional[str] = None
+    notes: Optional[str] = None
+    images: Optional[list[str]] = None
+
+class SheepJoinFromMobCreate(BaseModel):
+    source_mob_id: int
+    target_mob_ids: list[int] = Field(default_factory=list)
+    apply_to_all: bool = False
     date: Optional[datetime] = None
     notes: Optional[str] = None
