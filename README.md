@@ -17,7 +17,8 @@ Farm management app (React + Node/Express + Postgres) with API-first design, off
 - `docker compose up --build`
 
 API:
-- `http://<host>:4000/api/v1/health`
+- `http://127.0.0.1:4000/api/v1/health` (local on server host)
+- `https://<host>/api/v1/health` (external via web reverse-proxy)
 
 Web:
 - `http://<host>/` (redirects to HTTPS)

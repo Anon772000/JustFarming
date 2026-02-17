@@ -4,7 +4,9 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "tsx watch src/main.ts",
+    "prebuild": "npm run prisma:generate",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "prisma:generate": "prisma generate",

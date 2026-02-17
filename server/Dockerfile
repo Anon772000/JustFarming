@@ -8,17 +8,18 @@ WORKDIR /app
 
 # Install deps first for better caching
 COPY package.json package-lock.json* ./
+COPY prisma ./prisma
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 COPY tsconfig.json ./
-COPY prisma ./prisma
 COPY src ./src
+COPY scripts ./scripts
 
-# Prisma client generation (does not require DB)
-RUN npx prisma generate
+# Build once at image build-time; runtime only starts compiled app.
+RUN npm run prisma:generate && npm run build
 
 EXPOSE 4000
 
 # NOTE: initial boot uses prisma db push to get running.
 # Replace with `prisma migrate deploy` once migrations are committed.
-CMD ["sh", "-lc", "npx prisma db push && npm run dev"]
+CMD ["sh", "-lc", "npx prisma db push && npm run start"]

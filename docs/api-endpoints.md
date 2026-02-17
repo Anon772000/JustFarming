@@ -17,13 +17,21 @@ Base path: `/api/v1`
 - `POST /auth/login` -> `{ accessToken, refreshToken, user }`
 - `POST /auth/refresh` -> `{ accessToken, refreshToken }`
 - `POST /auth/logout` -> `204`
+- `POST /auth/logout-others` (auth) -> `204`
+- `GET /auth/sessions?deviceId=<optional>` (auth) -> `{ data: Session[] }`
+- `DELETE /auth/sessions/:sessionId` (auth) -> `204`
 
 ## Users
 
-- `GET /users/me` -> `{ data: user }`
+- `GET /users/me` (auth) -> `{ data: user }`
 - `GET /users` (manager) -> `{ data: user[] }`
+- `GET /users/audit?targetUserId=<uuid>&limit=<n>` (manager) -> `{ data: UserAuditEvent[] }`
 - `POST /users` (manager) -> `{ data: user }`
+- `GET /users/:userId` (manager) -> `{ data: user }`
 - `PATCH /users/:userId` (manager) -> `{ data: user }`
+- `GET /users/:userId/sessions?deviceId=<optional>` (manager) -> `{ data: Session[] }`
+- `DELETE /users/:userId/sessions/:sessionId` (manager) -> `204`
+- `POST /users/:userId/revoke-sessions` (manager) -> `204`
 
 ## Sensors
 
@@ -50,6 +58,7 @@ Each resource follows:
 Resources:
 - `mobs`
 - `paddocks`
+- `mob-paddock-allocations`
 - `crop-seasons`
 - `paddock-plans`
 - `mob-movement-plans`
@@ -58,10 +67,10 @@ Resources:
 - `water-links`
 - `lora-nodes`
 - `sensors`
-- `sensor-readings`
 - `feeders`
 - `hay-lots`
 - `grain-lots`
+- `feed-events`
 - `issues`
 - `tasks`
 - `contractors`
@@ -69,10 +78,14 @@ Resources:
 - `attachments`
 - `activity-events`
 
+Special attachment endpoint:
+- `POST /attachments/upload` (multipart form-data; file field: `file`) -> `{ data: Attachment }`
+
 ## Map
 
 - `GET /map/summary`
 - `GET /map/water-network`
+- `GET /map/alerts`
 
 ## LoRa
 

@@ -30,7 +30,7 @@ services:
     depends_on:
       - db
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 4000
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-example}@db:5432/croxton_east
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-replace_with_32+_chars_access_secret}
@@ -40,7 +40,7 @@ services:
     volumes:
       - uploads:/app/uploads
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
 
   web:
     build:

@@ -39,7 +39,7 @@ Response conventions:
 - Single: `{ data: T }`
 - Errors: `{ error: string, detail?: string }`
 
-### Auth (implemented)
+### Auth
 
 - `POST /auth/login`
   - Request: `{ email: string, password: string }`
@@ -50,19 +50,36 @@ Response conventions:
 - `POST /auth/logout`
   - Request: `{ refreshToken: string }`
   - Response: `204 No Content`
+- `POST /auth/logout-others` (auth)
+  - Request: `{ refreshToken: string }`
+  - Response: `204 No Content`
+- `GET /auth/sessions?deviceId=<optional>` (auth)
+  - Response: `{ data: Session[] }`
+- `DELETE /auth/sessions/:sessionId` (auth)
+  - Response: `204 No Content`
 
-### Users (implemented)
+### Users
 
 - `GET /users/me`
   - Response: `{ data: { id, farmId, email, displayName, role, createdAt, updatedAt } }`
 - `GET /users` (manager)
   - Response: `{ data: User[] }`
+- `GET /users/audit?targetUserId=<uuid>&limit=<n>` (manager)
+  - Response: `{ data: UserAuditEvent[] }`
 - `POST /users` (manager)
   - Request: `{ email: string, password: string, displayName: string, role?: "manager"|"worker" }`
+  - Response: `{ data: User }`
+- `GET /users/:userId` (manager)
   - Response: `{ data: User }`
 - `PATCH /users/:userId` (manager)
   - Request: `{ displayName?: string, password?: string, role?: "manager"|"worker" }`
   - Response: `{ data: User }`
+- `GET /users/:userId/sessions?deviceId=<optional>` (manager)
+  - Response: `{ data: Session[] }`
+- `DELETE /users/:userId/sessions/:sessionId` (manager)
+  - Response: `204 No Content`
+- `POST /users/:userId/revoke-sessions` (manager)
+  - Response: `204 No Content`
 
 ### CRUD Resources (pattern)
 
@@ -76,6 +93,7 @@ For each resource below:
 Resources:
 - `mobs` (implemented: GET/POST/GET/PATCH/DELETE)
 - `paddocks` (implemented: GET/POST/GET/PATCH/DELETE)
+- `mob-paddock-allocations` (implemented: GET/POST/GET/PATCH/DELETE)
 - `crop-seasons`
 - `paddock-plans`
 - `mob-movement-plans`
@@ -88,6 +106,7 @@ Resources:
 - `feeders`
 - `hay-lots`
 - `grain-lots`
+- `feed-events`
 - `issues`
 - `tasks`
 - `contractors`
