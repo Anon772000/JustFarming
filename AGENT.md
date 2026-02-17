@@ -5,7 +5,7 @@ This file is the operating guide for engineers and coding agents working in this
 ## Project Summary
 
 - Name: `Croxton East`
-- Purpose: farm management platform with API-first backend and React frontend
+- Purpose: farm management platform with API-first backend, React frontend, and offline sync support
 - Stack:
   - Backend: Node.js + Express + TypeScript + Prisma + Postgres
   - Frontend: React + Vite + TypeScript + React Query
@@ -37,10 +37,14 @@ docker compose up --build
 ```
 
 Service URLs:
-- API health: `http://<host>:4000/api/v1/health`
-- Web: `http://<host>/` and `https://<host>/`
+- API health (local on host): `http://127.0.0.1:4000/api/v1/health`
+- API health (external via web): `https://<host>/api/v1/health`
+- Web: `http://<host>/` (redirects to HTTPS) and `https://<host>/` (self-signed TLS by default)
 
 ### Local Development
+
+Prerequisite:
+- Node.js `20+`
 
 Backend:
 
@@ -65,11 +69,46 @@ npm run dev
   - controllers: request/response shape and validation handoff
   - services: business logic + DB calls
 - Use Prisma models from `server/prisma/schema.prisma` as the source of truth.
+- Keep API base path and contracts aligned with docs:
+  - base path: `/api/v1`
+  - health: `GET /health` -> `{ ok: true, service: "croxton-east-api" }`
 - Keep API responses consistent with documented conventions:
   - list: `{ data: T[] }`
   - single: `{ data: T }`
+  - delete: `204 No Content`
   - errors: `{ error: string, detail?: string }`
 - Scope data by farm where applicable (`farmId`) and preserve auth boundaries.
+
+### Implemented Coverage (Current Baseline)
+
+- Auth: login/refresh/logout + logout-others + session list/revoke
+- Users: me + manager user CRUD + audit + per-user session management
+- CRUD resources currently implemented end-to-end:
+  - `mobs`
+  - `paddocks`
+  - `crop-seasons`
+  - `paddock-plans`
+  - `mob-movement-plans`
+  - `mob-paddock-allocations`
+  - `production-plans`
+  - `water-assets`
+  - `water-links`
+  - `lora-nodes`
+  - `sensors`
+  - `feeders`
+  - `hay-lots`
+  - `grain-lots`
+  - `feed-events`
+  - `issues`
+  - `tasks`
+  - `contractors`
+  - `pest-spottings`
+  - `attachments`
+  - `activity-events`
+- Sensor readings: list/get
+- Map: summary + water-network + alerts
+- Sync: changes + batch
+- LoRa ingest: `POST /lora/ingest`
 
 ## Frontend Rules
 
@@ -82,8 +121,18 @@ npm run dev
 
 - Do not hand-edit production DB schema directly.
 - Update Prisma schema first, then generate/apply migrations.
+- Primary keys are UUIDs; preserve UUID-based create/update flows.
 - Preserve soft-delete semantics (`deletedAt`) where used.
+- Preserve polymorphic attachment linkage (`entityType`, `entityId`).
 - Preserve sync safety tables/flows (`SyncChange`, `SyncTombstone`) for offline consistency.
+
+Typical Prisma workflow:
+
+```bash
+cd server
+npm run prisma:generate
+npm run prisma:migrate
+```
 
 ## Security and Access
 
@@ -139,7 +188,8 @@ npm run build
 2. Implement service and controller logic.
 3. Wire route in module and top-level router.
 4. Add endpoint to `docs/api-endpoints.md`.
-5. Update UI consumers if applicable.
+5. If architecture/flow changes, update `docs/architecture.md`.
+6. Update UI consumers if applicable.
 
 ## Agent Workflow Expectations
 
@@ -147,3 +197,33 @@ npm run build
 - Validate changes with build/run commands.
 - Keep compatibility with existing API contracts unless explicitly changing them.
 - If making contract changes, update docs in the same change.
+
+## Pre-Merge Verification Checklist
+
+Run before opening or merging a patch:
+
+1. Build backend:
+
+```bash
+cd server
+npm run build
+```
+
+2. Build frontend:
+
+```bash
+cd client
+npm run build
+```
+
+3. If API or env/runtime behavior changed, smoke test health endpoint:
+
+```bash
+docker compose up -d --build
+curl -f http://localhost:4000/api/v1/health
+```
+
+4. If Prisma schema changed, ensure migration + docs are included:
+- migration generated/applied from `server/prisma/schema.prisma`
+- endpoint docs updated in `docs/api-endpoints.md` if contracts changed
+- architecture docs updated in `docs/architecture.md` if flows/layout changed
