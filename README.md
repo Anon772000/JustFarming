@@ -1,103 +1,56 @@
-# JustFarming
+# Croxton East
 
-A minimal, hackable livestock & paddock management app.
+Farm management app (React + Node/Express + Postgres) with API-first design, offline sync, and TypeScript end-to-end.
 
-- Backend: FastAPI + SQLAlchemy (SQLite by default; optional Postgres)
-- Frontend: React + Vite + TypeScript + React‑Leaflet
-- MQTT: Mosquitto broker (optional) with a subscriber stub
-- Mapping: Paddock polygons stored as GeoJSON and rendered on a Leaflet map
+## Services
 
-Goal: move fast on CRUD for paddocks, mobs, movements and sensors, with a simple map UI. Add PostGIS, auth, alerts, and analytics later as you grow.
+- `server/`: Node/Express TypeScript API using Prisma + Postgres
+- `client/`: React + Vite + TypeScript UI (React Query + offline queue primitives)
+- `docs/`: architecture artifacts (schema, endpoints, migration plan)
 
----
+## Run With Docker
 
-## Development (no Docker)
+1. Configure environment
+- Copy `.env.example` to `.env` and set `POSTGRES_PASSWORD`.
 
-### 1) Backend
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-Backend runs at http://localhost:8000 (OpenAPI docs at /docs).
+2. Start services
+- `docker compose up --build`
 
-### 2) Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Frontend runs at http://localhost:5173
+API:
+- `http://<host>:4000/api/v1/health`
 
-The frontend expects the API at `http://localhost:8000` by default. To change it, create `frontend/.env` with:
+Web:
+- `http://<host>/` (redirects to HTTPS)
+- `https://<host>/` (self-signed TLS by default)
 
-```
-VITE_API_BASE=http://your-backend-host:8000
-```
+## Bootstrap (First Manager User)
 
-Node 18 LTS or 20 is recommended for Vite 5.
+Self-registration is disabled. Create the first manager user server-side:
 
----
+- `docker exec -e BOOTSTRAP_EMAIL=admin@example.com -e BOOTSTRAP_PASSWORD=password123 -e BOOTSTRAP_DISPLAY_NAME=Admin croxton-east-api npm run bootstrap:admin`
 
-## Docker (optional)
+Then log in via the web UI and create additional users under the Users tab.
 
-Requires Docker & Docker Compose.
 
-```bash
-docker compose up --build
-```
+## Development (Host)
 
-Services:
-- `backend`: FastAPI server on port 8000
-- `frontend`: Static site served by nginx on port 80
-- `db`: Postgres (optional; enable by setting `DATABASE_URL` accordingly)
-- `mosquitto`: MQTT broker (optional)
+Install Node 20+ and run:
+- `cd server && npm install && npm run dev`
+- `cd client && npm install && npm run dev -- --host 0.0.0.0`
 
----
+## Docs
 
-## Environment
+- Domain schema: `server/prisma/schema.prisma`
+- Architecture: `docs/architecture.md`
+- Endpoint catalog: `docs/api-endpoints.md`
 
-Already included:
-- Root `.env` for Docker Compose (Postgres, MQTT)
-- `backend/.env` for local dev (defaults to SQLite)
+## Import Paddocks From KML
 
-Key variables (backend):
-- `DATABASE_URL` (default SQLite): `sqlite+aiosqlite:///./app.db`
-- For Postgres: `postgresql+asyncpg://postgres:postgres@db:5432/justfarming`
+If you have a Google Earth KML file (for example `farm.kml` at repo root), you can import placemark polygons into paddocks:
 
----
+- `cd server && npm run import:paddocks:kml -- --file ../farm.kml`
 
-## What's Included
-
-### Backend
-- CRUD: paddocks, mobs, movements, sensors
-- GeoJSON polygon storage (plain text field for simplicity)
-- MQTT subscriber stub (`app/mqtt/subscriber.py`) you can hook to Mosquitto
-- CORS enabled for local dev
-
-### Frontend
-- React + TypeScript + Vite
-- Map view with:
-  - Paddock polygons
-  - Mob markers (with basic popups)
-- Simple forms to add paddocks & mobs
-- KML import (UI: Import KML → choose `.kml` → Upload). After a successful upload, paddocks refresh automatically.
-
----
-
-## Roadmap Ideas
-- Switch to Postgres + PostGIS for true spatial queries
-- Auth (JWT), roles, multi-farm tenancy
-- Grazing planner + paddock rest analytics
-- Alerts (SMS/Email/Discord) for sensor thresholds
-- Offline-first PWA for field use
-- Integration with LoRa/GPS tags, water/fence sensors
-
----
-
-## License
-MIT (for the scaffold). Replace with your preferred license for your project.
-
----
+Notes:
+- Upserts paddocks by name (per farm) and stores geometry as GeoJSON in `Paddock.boundaryGeoJson`.
+- Use `--dry-run` to preview changes.
+- Use `--farm-id <uuid>` if you have multiple farms.

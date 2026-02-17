@@ -1,54 +1,58 @@
 services:
-  backend:
-    build: ./backend
-    container_name: justfarming-backend
-    restart: always
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    depends_on:
-      - db
-      - mosquitto
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/justfarming
-      - MQTT_HOST=mosquitto
-      - MQTT_PORT=1883
-    volumes:
-      - ./backend:/app
-
-  frontend:
-    build: ./frontend
-    container_name: justfarming-frontend
-    restart: always
-    ports:
-      - "80:80"         # Serve frontend via nginx on port 80
-    depends_on:
-      - backend
-
   db:
     image: postgres:16
-    container_name: justfarming-db
-    restart: always
+    container_name: croxton-east-db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-example}
-      POSTGRES_DB: justfarming
+      POSTGRES_DB: croxton_east
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
   mosquitto:
     image: eclipse-mosquitto:2
-    container_name: justfarming-mosquitto
-    restart: always
+    container_name: croxton-east-mosquitto
+    restart: unless-stopped
     ports:
-      - "1883:1883"
+      - "127.0.0.1:1883:1883"
     command: ["/usr/sbin/mosquitto", "-c", "/mosquitto-no-auth.conf"]
     volumes:
       - ./mosquitto-no-auth.conf:/mosquitto-no-auth.conf
 
+  api:
+    build:
+      context: ./server
+    container_name: croxton-east-api
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-example}@db:5432/croxton_east
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-replace_with_32+_chars_access_secret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-replace_with_32+_chars_refresh_secret}
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 3650d
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "4000:4000"
+
+  web:
+    build:
+      context: ./client
+    container_name: croxton-east-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+
 volumes:
   pgdata:
-
+  uploads:

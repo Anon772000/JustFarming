@@ -1,0 +1,669 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum MobSpecies {
+  SHEEP
+  CATTLE
+  GOAT
+  MIXED
+}
+
+enum PlanStatus {
+  DRAFT
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum WaterAssetType {
+  DAM
+  BORE
+  TROUGH
+  PIPE
+  VALVE
+  JUNCTION
+}
+
+enum SensorType {
+  WATER_LEVEL
+  FLOW_RATE
+  PRESSURE
+  SOIL_MOISTURE
+  TEMPERATURE
+  HUMIDITY
+  BATTERY
+  CUSTOM
+}
+
+enum IssueStatus {
+  OPEN
+  TRIAGED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum IssueCategory {
+  GENERAL
+  DEAD_STOCK
+  LOW_WATER
+  LOW_FEED
+  FENCE
+  OTHER
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  CANCELLED
+}
+
+enum AttachmentEntityType {
+  MOB
+  PADDOCK
+  CROP_SEASON
+  PADDOCK_PLAN
+  MOB_MOVEMENT_PLAN
+  PRODUCTION_PLAN
+  WATER_ASSET
+  LORA_NODE
+  SENSOR_READING
+  FEEDER
+  HAY_LOT
+  GRAIN_LOT
+  ISSUE
+  TASK
+  CONTRACTOR
+  PEST_SPOTTING
+  ACTIVITY_EVENT
+}
+
+model Farm {
+  id             String          @id @default(uuid()) @db.Uuid
+  name           String
+  timezone       String          @default("Australia/Brisbane")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  users          User[]
+  paddocks       Paddock[]
+  mobs           Mob[]
+  mobPaddockAllocations MobPaddockAllocation[]
+  cropSeasons    CropSeason[]
+  paddockPlans   PaddockPlan[]
+  mobMovementPlans MobMovementPlan[]
+  productionPlans ProductionPlan[]
+  waterAssets    WaterAsset[]
+  waterLinks     WaterLink[]
+  loraNodes      LoraNode[]
+  sensorReadings SensorReading[]
+  feeders        Feeder[]
+  hayLots        HayLot[]
+  grainLots      GrainLot[]
+  feedEvents    FeedEvent[]
+  issues         Issue[]
+  tasks          Task[]
+  contractors    Contractor[]
+  pestSpottings  PestSpotting[]
+  activityEvents ActivityEvent[]
+  attachments    Attachment[]
+  syncChanges    SyncChange[]
+  syncTombstones SyncTombstone[]
+}
+
+model User {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  email          String
+  passwordHash   String
+  displayName    String
+  role           String          @default("manager")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  disabledAt     DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  refreshTokens  RefreshToken[]
+  createdIssues  Issue[]         @relation("IssueCreatedBy")
+  createdTasks   Task[]          @relation("TaskCreatedBy")
+  assignedTasks  Task[]          @relation("TaskAssignedTo")
+
+  @@unique([farmId, email])
+  @@index([farmId])
+}
+
+model RefreshToken {
+  id             String          @id @default(uuid()) @db.Uuid
+  userId         String          @db.Uuid
+  deviceId       String?
+  userAgent      String?
+  tokenHash      String          @unique
+  expiresAt      DateTime
+  createdAt      DateTime        @default(now())
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, deviceId])
+}
+
+model Paddock {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  name           String
+  areaHa         Decimal?        @db.Decimal(10, 2)
+  boundaryGeoJson Json?
+  currentStatus  String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  cropSeasons    CropSeason[]
+  paddockPlans   PaddockPlan[]
+  currentMobs    Mob[]           @relation("CurrentPaddock")
+  mobAllocations MobPaddockAllocation[]
+  movementTargets MobMovementPlan[] @relation("MovementToPaddock")
+  movementSources MobMovementPlan[] @relation("MovementFromPaddock")
+  productionPlans ProductionPlan[]
+  issues         Issue[]
+  tasks          Task[]
+  feedEvents    FeedEvent[]
+  pestSpottings  PestSpotting[]
+
+  @@unique([farmId, name])
+  @@index([farmId])
+}
+
+model Mob {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  name           String
+  species        MobSpecies
+  headCount      Int
+  avgWeightKg    Decimal?        @db.Decimal(8, 2)
+  currentPaddockId String?       @db.Uuid
+  metadataJson   Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  currentPaddock Paddock?        @relation("CurrentPaddock", fields: [currentPaddockId], references: [id], onDelete: SetNull)
+  paddockAllocations MobPaddockAllocation[]
+  movementPlans  MobMovementPlan[]
+  productionPlans ProductionPlan[]
+  issues         Issue[]
+  tasks          Task[]
+  feedEvents    FeedEvent[]
+
+  @@unique([farmId, name])
+  @@index([farmId])
+  @@index([currentPaddockId])
+}
+
+model MobPaddockAllocation {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  mobId          String          @db.Uuid
+  paddockId      String          @db.Uuid
+  headCount      Int?
+  startedAt      DateTime        @default(now())
+  endedAt        DateTime?
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  mob            Mob             @relation(fields: [mobId], references: [id], onDelete: Cascade)
+  paddock        Paddock         @relation(fields: [paddockId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@index([mobId, endedAt])
+  @@index([paddockId, endedAt])
+}
+
+model CropSeason {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  paddockId      String          @db.Uuid
+  seasonName     String
+  cropType       String
+  startDate      DateTime
+  endDate        DateTime?
+  targetYieldTons Decimal?       @db.Decimal(10, 2)
+  actualYieldTons Decimal?       @db.Decimal(10, 2)
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  paddock        Paddock         @relation(fields: [paddockId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@index([paddockId])
+}
+
+model PaddockPlan {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  paddockId      String          @db.Uuid
+  name           String
+  status         PlanStatus      @default(DRAFT)
+  plannedStart   DateTime
+  plannedEnd     DateTime?
+  actualStart    DateTime?
+  actualEnd      DateTime?
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  paddock        Paddock         @relation(fields: [paddockId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@index([paddockId])
+}
+
+model MobMovementPlan {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  mobId          String          @db.Uuid
+  fromPaddockId  String?         @db.Uuid
+  toPaddockId    String          @db.Uuid
+  status         PlanStatus      @default(PLANNED)
+  plannedAt      DateTime
+  actualAt       DateTime?
+  reason         String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  mob            Mob             @relation(fields: [mobId], references: [id], onDelete: Cascade)
+  fromPaddock    Paddock?        @relation("MovementFromPaddock", fields: [fromPaddockId], references: [id], onDelete: SetNull)
+  toPaddock      Paddock         @relation("MovementToPaddock", fields: [toPaddockId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@index([mobId])
+  @@index([plannedAt])
+}
+
+model ProductionPlan {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  paddockId      String?         @db.Uuid
+  mobId          String?         @db.Uuid
+  planName       String
+  status         PlanStatus      @default(DRAFT)
+  targetMetric   String?
+  targetValue    Decimal?        @db.Decimal(12, 2)
+  actualValue    Decimal?        @db.Decimal(12, 2)
+  startDate      DateTime
+  endDate        DateTime?
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  paddock        Paddock?        @relation(fields: [paddockId], references: [id], onDelete: SetNull)
+  mob            Mob?            @relation(fields: [mobId], references: [id], onDelete: SetNull)
+
+  @@index([farmId])
+  @@index([paddockId])
+  @@index([mobId])
+}
+
+model WaterAsset {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  type           WaterAssetType
+  name           String
+  locationGeoJson Json?
+  capacityLitres Decimal?        @db.Decimal(14, 2)
+  metadataJson   Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  fromLinks      WaterLink[]     @relation("WaterLinkFrom")
+  toLinks        WaterLink[]     @relation("WaterLinkTo")
+  issues        Issue[]
+
+  @@unique([farmId, name])
+  @@index([farmId])
+}
+
+model WaterLink {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  fromAssetId    String          @db.Uuid
+  toAssetId      String          @db.Uuid
+  connectionType String
+  diameterMm     Decimal?        @db.Decimal(8, 2)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  fromAsset      WaterAsset      @relation("WaterLinkFrom", fields: [fromAssetId], references: [id], onDelete: Cascade)
+  toAsset        WaterAsset      @relation("WaterLinkTo", fields: [toAssetId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@index([fromAssetId])
+  @@index([toAssetId])
+}
+
+model LoraNode {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  name           String
+  devEui         String          @unique
+  locationGeoJson Json?
+  installedAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  sensors        Sensor[]
+  readings       SensorReading[]
+
+  @@index([farmId])
+}
+
+model Sensor {
+  id             String          @id @default(uuid()) @db.Uuid
+  nodeId         String          @db.Uuid
+  key            String
+  type           SensorType
+  unit           String?
+  metadataJson   Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  node           LoraNode        @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  readings       SensorReading[]
+
+  @@unique([nodeId, key])
+  @@index([nodeId])
+}
+
+model SensorReading {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  nodeId         String          @db.Uuid
+  sensorId       String          @db.Uuid
+  observedAt     DateTime
+  numericValue   Decimal         @db.Decimal(14, 4)
+  textValue      String?
+  rawPayloadJson Json?
+  createdAt      DateTime        @default(now())
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  node           LoraNode        @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  sensor         Sensor          @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, observedAt])
+  @@index([sensorId, observedAt])
+  @@index([nodeId, observedAt])
+}
+
+model Feeder {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  name           String
+  feederType     String
+  locationGeoJson Json?
+  capacityKg     Decimal?        @db.Decimal(10, 2)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  feedEvents    FeedEvent[]
+  issues        Issue[]
+
+  @@index([farmId])
+}
+
+model HayLot {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  lotCode        String
+  quantityTons   Decimal         @db.Decimal(10, 2)
+  qualityGrade   String?
+  location       String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  feedEvents    FeedEvent[]
+
+  @@unique([farmId, lotCode])
+  @@index([farmId])
+}
+
+model GrainLot {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  lotCode        String
+  grainType      String
+  quantityTons   Decimal         @db.Decimal(10, 2)
+  moisturePct    Decimal?        @db.Decimal(5, 2)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  feedEvents    FeedEvent[]
+
+  @@unique([farmId, lotCode])
+  @@index([farmId])
+}
+
+model FeedEvent {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  occurredAt     DateTime
+  quantityKg     Decimal         @db.Decimal(12, 2)
+  mobId          String?         @db.Uuid
+  paddockId      String?         @db.Uuid
+  feederId       String?         @db.Uuid
+  hayLotId       String?         @db.Uuid
+  grainLotId     String?         @db.Uuid
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  mob            Mob?            @relation(fields: [mobId], references: [id], onDelete: SetNull)
+  paddock        Paddock?        @relation(fields: [paddockId], references: [id], onDelete: SetNull)
+  feeder         Feeder?         @relation(fields: [feederId], references: [id], onDelete: SetNull)
+  hayLot         HayLot?         @relation(fields: [hayLotId], references: [id], onDelete: SetNull)
+  grainLot       GrainLot?       @relation(fields: [grainLotId], references: [id], onDelete: SetNull)
+
+  @@index([farmId])
+  @@index([occurredAt])
+  @@index([mobId])
+  @@index([paddockId])
+  @@index([feederId])
+  @@index([hayLotId])
+  @@index([grainLotId])
+}
+
+model Issue {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  category       IssueCategory   @default(GENERAL)
+  title          String
+  description    String?
+  status         IssueStatus     @default(OPEN)
+  severity       String?
+  locationGeoJson Json?
+  paddockId      String?         @db.Uuid
+  mobId          String?         @db.Uuid
+  feederId       String?         @db.Uuid
+  waterAssetId   String?         @db.Uuid
+  createdById    String          @db.Uuid
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  resolvedAt     DateTime?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  paddock        Paddock?        @relation(fields: [paddockId], references: [id], onDelete: SetNull)
+  mob            Mob?            @relation(fields: [mobId], references: [id], onDelete: SetNull)
+  feeder         Feeder?         @relation(fields: [feederId], references: [id], onDelete: SetNull)
+  waterAsset     WaterAsset?     @relation(fields: [waterAssetId], references: [id], onDelete: SetNull)
+  createdBy      User            @relation("IssueCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([farmId, status])
+  @@index([farmId, category])
+  @@index([paddockId])
+  @@index([mobId])
+  @@index([feederId])
+  @@index([waterAssetId])
+}
+
+model Task {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  title          String
+  description    String?
+  status         TaskStatus      @default(OPEN)
+  dueAt          DateTime?
+  paddockId      String?         @db.Uuid
+  mobId          String?         @db.Uuid
+  createdById    String          @db.Uuid
+  assignedToId   String?         @db.Uuid
+  completedAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  paddock        Paddock?        @relation(fields: [paddockId], references: [id], onDelete: SetNull)
+  mob            Mob?            @relation(fields: [mobId], references: [id], onDelete: SetNull)
+  createdBy      User            @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  assignedTo     User?           @relation("TaskAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([farmId, status])
+  @@index([assignedToId])
+}
+
+model Contractor {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  name           String
+  specialty      String?
+  phone          String?
+  email          String?
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, name])
+  @@index([farmId])
+}
+
+model PestSpotting {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  paddockId      String?         @db.Uuid
+  pestType       String
+  severity       String?
+  locationGeoJson Json?
+  spottedAt      DateTime
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  paddock        Paddock?        @relation(fields: [paddockId], references: [id], onDelete: SetNull)
+
+  @@index([farmId, spottedAt])
+  @@index([paddockId])
+}
+
+model ActivityEvent {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  entityType     String
+  entityId       String          @db.Uuid
+  eventType      String
+  plannedAt      DateTime?
+  actualAt       DateTime?
+  payloadJson    Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model Attachment {
+  id             String               @id @default(uuid()) @db.Uuid
+  farmId         String               @db.Uuid
+  entityType     AttachmentEntityType
+  entityId       String               @db.Uuid
+  mediaType      String
+  mimeType       String
+  url            String
+  thumbnailUrl   String?
+  capturedAt     DateTime?
+  createdById    String?              @db.Uuid
+  createdAt      DateTime             @default(now())
+
+  farm           Farm                 @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, entityType, entityId])
+}
+
+model SyncChange {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  entityType     String
+  entityId       String          @db.Uuid
+  operation      String
+  changedAt      DateTime        @default(now())
+  payloadJson    Json?
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, changedAt])
+  @@index([entityType, entityId])
+}
+
+model SyncTombstone {
+  id             String          @id @default(uuid()) @db.Uuid
+  farmId         String          @db.Uuid
+  entityType     String
+  entityId       String          @db.Uuid
+  deletedAt      DateTime        @default(now())
+
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, deletedAt])
+}

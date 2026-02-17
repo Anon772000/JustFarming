@@ -1,20 +1,15 @@
-# Local environment
+# Node
+node_modules/
+dist/
+build/
+
+# Env
 .env
-backend/.env
-backend/.venv/
-**/__pycache__/
 
-# Node artifacts
-frontend/node_modules/
-frontend/dist/
-
-# KML and other large datasets
-farm (1).kml
-*.kml
+# Prisma
 
 # Logs
-npm-debug.log*
-yarn-error.log
+*.log
 
-# Uploaded observation images
-backend/uploads/
+# OS
+.DS_Store
