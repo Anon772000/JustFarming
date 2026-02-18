@@ -8,9 +8,11 @@
     "dev": "tsx watch src/main.ts",
     "prebuild": "npm run prisma:generate",
     "build": "tsc -p tsconfig.json",
+    "test": "tsx --test src/app.health.test.ts",
     "start": "node dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
     "import:paddocks:kml": "tsx scripts/import-kml-paddocks.ts"
   },
@@ -32,7 +34,9 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^2.0.0",
     "@types/node": "^22.10.2",
+    "@types/supertest": "^6.0.3",
     "prisma": "^6.2.1",
+    "supertest": "^7.2.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

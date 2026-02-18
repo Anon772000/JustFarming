@@ -1,0 +1,7 @@
+services:
+  web:
+    environment:
+      TLS_SELF_SIGNED_FALLBACK: "false"
+    volumes:
+      - ./certs/tls.crt:/etc/nginx/certs/tls.crt:ro
+      - ./certs/tls.key:/etc/nginx/certs/tls.key:ro

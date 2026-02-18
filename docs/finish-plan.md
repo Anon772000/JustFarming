@@ -32,4 +32,5 @@ This plan tracks the final hardening and handover work for the current Croxton E
 
 - [x] Rebuild and restart Docker stack on production host with new images.
 - [x] Verify API + web health on production host after deployment.
-- [ ] Optional follow-up: add first-class Prisma migrations and switch startup from `db push` to `migrate deploy`.
+- [x] Add first-class Prisma migrations and switch startup from `db push` to `migrate deploy`.
+- [x] Add backend smoke test and CI workflow for build/test verification.

@@ -11,7 +11,10 @@ Farm management app (React + Node/Express + Postgres) with API-first design, off
 ## Run With Docker
 
 1. Configure environment
-- Copy `.env.example` to `.env` and set `POSTGRES_PASSWORD`.
+- Copy `.env.example` to `.env` and set strong values for:
+  - `POSTGRES_PASSWORD`
+  - `JWT_ACCESS_SECRET`
+  - `JWT_REFRESH_SECRET`
 
 2. Start services
 - `docker compose up --build`
@@ -23,6 +26,18 @@ API:
 Web:
 - `http://<host>/` (redirects to HTTPS)
 - `https://<host>/` (self-signed TLS by default)
+
+## Production TLS (Mounted Certificates)
+
+To use real certificates instead of self-signed certs:
+
+1. Put cert/key files at:
+  - `certs/tls.crt`
+  - `certs/tls.key`
+2. Start with the production override:
+  - `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`
+
+With this override, startup fails if cert files are missing.
 
 ## Bootstrap (First Manager User)
 
@@ -44,6 +59,13 @@ Install Node 20+ and run:
 - Domain schema: `server/prisma/schema.prisma`
 - Architecture: `docs/architecture.md`
 - Endpoint catalog: `docs/api-endpoints.md`
+
+## Database Migrations
+
+- The repo now includes Prisma migrations under `server/prisma/migrations`.
+- Container startup applies migrations with `prisma migrate deploy`.
+- For existing databases that were previously created via `db push`, baseline once before switching:
+  - `cd server && npx prisma migrate resolve --applied 202602180001_initial`
 
 ## Import Paddocks From KML
 

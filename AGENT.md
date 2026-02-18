@@ -29,7 +29,10 @@ Primary references:
 ### Docker (recommended)
 
 1. Copy `.env.example` to `.env`.
-2. Set at least `POSTGRES_PASSWORD`.
+2. Set required secrets:
+   - `POSTGRES_PASSWORD`
+   - `JWT_ACCESS_SECRET`
+   - `JWT_REFRESH_SECRET`
 3. Run:
 
 ```bash
@@ -40,6 +43,12 @@ Service URLs:
 - API health (local on host): `http://127.0.0.1:4000/api/v1/health`
 - API health (external via web): `https://<host>/api/v1/health`
 - Web: `http://<host>/` (redirects to HTTPS) and `https://<host>/` (self-signed TLS by default)
+
+Production TLS override (mounted certs, no self-signed fallback):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
 
 ### Local Development
 
@@ -132,6 +141,7 @@ Typical Prisma workflow:
 cd server
 npm run prisma:generate
 npm run prisma:migrate
+npm run prisma:migrate:deploy
 ```
 
 ## Security and Access
@@ -209,21 +219,28 @@ cd server
 npm run build
 ```
 
-2. Build frontend:
+2. Run backend smoke test:
+
+```bash
+cd server
+npm test
+```
+
+3. Build frontend:
 
 ```bash
 cd client
 npm run build
 ```
 
-3. If API or env/runtime behavior changed, smoke test health endpoint:
+4. If API or env/runtime behavior changed, smoke test health endpoint:
 
 ```bash
 docker compose up -d --build
 curl -f http://localhost:4000/api/v1/health
 ```
 
-4. If Prisma schema changed, ensure migration + docs are included:
+5. If Prisma schema changed, ensure migration + docs are included:
 - migration generated/applied from `server/prisma/schema.prisma`
 - endpoint docs updated in `docs/api-endpoints.md` if contracts changed
 - architecture docs updated in `docs/architecture.md` if flows/layout changed
