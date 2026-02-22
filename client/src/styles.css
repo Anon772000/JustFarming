@@ -23,6 +23,16 @@
 
 html, body {
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -53,6 +63,7 @@ body {
   margin: 0 auto;
   padding: 28px 18px;
   animation: riseIn 260ms ease-out both;
+  min-width: 0;
 }
 
 .containerWide {
@@ -100,6 +111,8 @@ body {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.65);
   color: rgba(20, 34, 24, 0.8);
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .grid {
@@ -107,6 +120,7 @@ body {
   grid-template-columns: 1.15fr 0.85fr;
   gap: 16px;
   margin-top: 16px;
+  min-width: 0;
 }
 
 .gridSingle {
@@ -126,6 +140,8 @@ body {
   box-shadow: var(--shadow);
   border-radius: var(--radius-lg);
   padding: 18px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .card h2 {
@@ -142,6 +158,7 @@ body {
 .form {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .label {
@@ -171,6 +188,7 @@ body {
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 6px;
+  min-width: 0;
 }
 
 .btn {
@@ -245,12 +263,15 @@ body {
   border: 1px solid var(--edge);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.65);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  min-width: 0;
 }
 
 .table th,
@@ -310,6 +331,8 @@ body {
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.65);
   padding: 14px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .panelTitle {
@@ -402,6 +425,8 @@ body {
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.65);
   padding: 12px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .timelineItem {
@@ -478,6 +503,8 @@ body {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .calendarDow {
@@ -603,6 +630,8 @@ body {
   grid-template-columns: 320px 1fr;
   gap: 12px;
   align-items: stretch;
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (max-width: 860px) {
@@ -619,6 +648,7 @@ body {
   padding: 12px;
   max-height: clamp(520px, 72vh, 820px);
   overflow: auto;
+  min-width: 0;
 }
 
 .mapFrame {
@@ -628,6 +658,8 @@ body {
   position: relative;
   height: clamp(520px, 72vh, 820px);
   background: rgba(255, 255, 255, 0.6);
+  min-width: 0;
+  max-width: 100%;
 }
 
 
@@ -930,4 +962,182 @@ body {
 
 .attachMeta {
   padding: 10px;
+}
+
+@media (max-width: 980px) {
+  .containerWide {
+    max-width: 1020px;
+  }
+}
+
+@media (max-width: 860px) {
+  .container {
+    padding: 16px 12px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .topbar,
+  .sectionHead,
+  .panelTitle,
+  .timelineTop,
+  .mapSideHead {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topbar {
+    gap: 10px;
+  }
+
+  .brand h1 {
+    font-size: 22px;
+  }
+
+  .brand p {
+    line-height: 1.35;
+  }
+
+  .actions {
+    gap: 8px;
+  }
+
+  .actions > * {
+    max-width: 100%;
+  }
+
+  .actions .label {
+    flex: 1 1 180px;
+    min-width: 0 !important;
+  }
+
+  .actions .label[style*="min-width"],
+  .actions div[style*="min-width"] {
+    min-width: 0 !important;
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .actions .btn {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .appViewActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .appViewActions .btn {
+    width: 100%;
+  }
+
+  .tableWrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tableWrap > .table {
+    min-width: 780px;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 12px;
+  }
+
+  .table thead th {
+    white-space: nowrap;
+  }
+
+  .table td .actions[style*="justify-content: flex-end"] {
+    justify-content: flex-end !important;
+  }
+
+  .table td .actions .btn {
+    white-space: nowrap;
+  }
+
+  .kpiRow {
+    grid-template-columns: 1fr;
+  }
+
+  .mapLegend {
+    min-width: 0;
+    width: min(260px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+  }
+
+  .mapLegendBody {
+    max-height: 44vh;
+    overflow: auto;
+  }
+
+  .mapOverlayTopRight {
+    top: auto;
+    bottom: 8px;
+  }
+
+  .mapFrame {
+    height: min(72vh, 480px);
+  }
+
+  .attachGrid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 12px 10px;
+  }
+
+  .topbar {
+    padding: 14px;
+  }
+
+  .brand h1 {
+    font-size: 20px;
+  }
+
+  .appViewActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .calendarGrid {
+    gap: 4px;
+  }
+
+  .calendarDay {
+    min-height: 68px;
+    padding: 6px;
+    border-radius: 10px;
+  }
+
+  .calendarDayCount {
+    padding: 2px 6px;
+  }
+
+  .chip {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+
+  .mapFrame {
+    height: min(62vh, 420px);
+  }
+
+  .mapLegend {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 420px) {
+  .appViewActions {
+    grid-template-columns: 1fr;
+  }
 }

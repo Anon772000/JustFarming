@@ -552,7 +552,7 @@ export function MobMovementPlansPage() {
           </thead>
           <tbody>
             {plans.map((p) => {
-              const mobName = mobById.get(p.mobId)?.name ?? p.mobId;
+              const mobName = p.mob?.name ?? mobById.get(p.mobId)?.name ?? "Unknown mob";
               const fromName = p.fromPaddockId ? paddockById.get(p.fromPaddockId)?.name ?? p.fromPaddockId : "";
               const toName = paddockById.get(p.toPaddockId)?.name ?? p.toPaddockId;
 
@@ -621,7 +621,8 @@ export function MobMovementPlansPage() {
                         className="btn"
                         type="button"
                         onClick={() => {
-                          if (!confirm(`Delete move plan for ${mobById.get(p.mobId)?.name ?? "this mob"}?`)) return;
+                          const targetName = p.mob?.name ?? mobById.get(p.mobId)?.name ?? "this mob";
+                          if (!confirm(`Delete move plan for ${targetName}?`)) return;
                           void deleteMutation.mutateAsync(p.id);
                         }}
                         disabled={busy}

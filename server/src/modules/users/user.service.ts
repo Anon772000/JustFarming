@@ -28,19 +28,62 @@ function extractDetails(payload: Prisma.JsonValue | null): Record<string, unknow
   return details as Record<string, unknown>;
 }
 
-function buildAuditPayload(actorUserId: string, details?: Record<string, unknown>): Prisma.InputJsonValue {
-  const payload: Record<string, unknown> = { actorUserId };
+function buildAuditPayload(
+  actorUserId?: string | null,
+  details?: Record<string, unknown>,
+): Prisma.InputJsonValue | null {
+  const payload: Record<string, unknown> = {};
+  if (actorUserId) {
+    payload.actorUserId = actorUserId;
+  }
   if (details && Object.keys(details).length > 0) {
     payload.details = details;
   }
-  return payload as Prisma.InputJsonValue;
+  return Object.keys(payload).length > 0 ? (payload as Prisma.InputJsonValue) : null;
 }
 
-type UserAdminAuditEventType =
+export type UserAuditEventType =
   | "USER_ADMIN_CREATE"
   | "USER_ADMIN_UPDATE"
   | "USER_ADMIN_REVOKE_SESSION"
-  | "USER_ADMIN_REVOKE_SESSIONS";
+  | "USER_ADMIN_REVOKE_SESSIONS"
+  | "USER_AUTH_LOGIN_SUCCESS"
+  | "USER_AUTH_LOGIN_FAILED"
+  | "USER_AUTH_LOGIN_BLOCKED"
+  | "USER_AUTH_REFRESH"
+  | "USER_AUTH_LOGOUT"
+  | "USER_AUTH_LOGOUT_OTHERS"
+  | "USER_AUTH_REVOKE_SESSION"
+  | "USER_ACTION_API_MUTATION";
+
+type UserAdminAuditEventType = Extract<
+  UserAuditEventType,
+  "USER_ADMIN_CREATE" | "USER_ADMIN_UPDATE" | "USER_ADMIN_REVOKE_SESSION" | "USER_ADMIN_REVOKE_SESSIONS"
+>;
+
+export async function logUserAudit(
+  db: Prisma.TransactionClient | typeof prisma,
+  args: {
+    farmId: string;
+    targetUserId: string;
+    eventType: UserAuditEventType;
+    actorUserId?: string | null;
+    details?: Record<string, unknown>;
+    actualAt?: Date;
+  },
+): Promise<void> {
+  const payloadJson = buildAuditPayload(args.actorUserId, args.details);
+  await db.activityEvent.create({
+    data: {
+      farmId: args.farmId,
+      entityType: "users",
+      entityId: args.targetUserId,
+      eventType: args.eventType,
+      actualAt: args.actualAt ?? new Date(),
+      payloadJson: payloadJson === null ? undefined : payloadJson,
+    },
+  });
+}
 
 async function logUserAdminAudit(
   tx: Prisma.TransactionClient,
@@ -52,16 +95,7 @@ async function logUserAdminAudit(
     details?: Record<string, unknown>;
   },
 ): Promise<void> {
-  await tx.activityEvent.create({
-    data: {
-      farmId: args.farmId,
-      entityType: "users",
-      entityId: args.targetUserId,
-      eventType: args.eventType,
-      actualAt: new Date(),
-      payloadJson: buildAuditPayload(args.actorUserId, args.details),
-    },
-  });
+  await logUserAudit(tx, args);
 }
 
 const userSelect = {
@@ -75,11 +109,11 @@ const userSelect = {
   disabledAt: true,
 } as const;
 
-export type UserAdminAuditEntry = {
+export type UserAuditEntry = {
   id: string;
   farmId: string;
   targetUserId: string;
-  eventType: UserAdminAuditEventType;
+  eventType: UserAuditEventType | string;
   actorUserId: string | null;
   details: Record<string, unknown> | null;
   createdAt: Date;
@@ -111,14 +145,14 @@ export class UserService {
     return this.get(farmId, userId);
   }
 
-  static async listAudit(farmId: string, opts?: { limit?: number; targetUserId?: string }): Promise<UserAdminAuditEntry[]> {
+  static async listAudit(farmId: string, opts?: { limit?: number; targetUserId?: string }): Promise<UserAuditEntry[]> {
     const limit = Math.max(1, Math.min(500, opts?.limit ?? 120));
 
     const rows = await prisma.activityEvent.findMany({
       where: {
         farmId,
         entityType: "users",
-        eventType: { startsWith: "USER_ADMIN_" },
+        eventType: { startsWith: "USER_" },
         ...(opts?.targetUserId ? { entityId: opts.targetUserId } : {}),
       },
       orderBy: { createdAt: "desc" },
@@ -137,7 +171,7 @@ export class UserService {
       id: row.id,
       farmId: row.farmId,
       targetUserId: row.entityId,
-      eventType: row.eventType as UserAdminAuditEventType,
+      eventType: row.eventType as UserAuditEventType | string,
       actorUserId: extractActorUserId(row.payloadJson),
       details: extractDetails(row.payloadJson),
       createdAt: row.createdAt,

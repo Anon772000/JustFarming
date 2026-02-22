@@ -16,6 +16,15 @@ function parseDate(value: string): Date {
 }
 
 export class MobMovementPlanService {
+  private static readonly mobInclude = {
+    mob: {
+      select: {
+        id: true,
+        name: true,
+      },
+    },
+  } as const;
+
   static async list(farmId: string, opts?: { mobId?: string; paddockId?: string }) {
     return prisma.mobMovementPlan.findMany({
       where: {
@@ -27,12 +36,14 @@ export class MobMovementPlanService {
           : {}),
       },
       orderBy: { plannedAt: "desc" },
+      include: this.mobInclude,
     });
   }
 
   static async get(farmId: string, mobMovementPlanId: string) {
     const plan = await prisma.mobMovementPlan.findFirst({
       where: { id: mobMovementPlanId, farmId, deletedAt: null },
+      include: this.mobInclude,
     });
 
     if (!plan) {
@@ -100,7 +111,16 @@ export class MobMovementPlanService {
         });
       }
 
-      return plan;
+      const withMob = await tx.mobMovementPlan.findUnique({
+        where: { id: plan.id },
+        include: this.mobInclude,
+      });
+
+      if (!withMob) {
+        throw new ApiError(404, "Mob movement plan not found");
+      }
+
+      return withMob;
     });
   }
 
@@ -177,7 +197,16 @@ export class MobMovementPlanService {
         });
       }
 
-      return plan;
+      const withMob = await tx.mobMovementPlan.findUnique({
+        where: { id: plan.id },
+        include: this.mobInclude,
+      });
+
+      if (!withMob) {
+        throw new ApiError(404, "Mob movement plan not found");
+      }
+
+      return withMob;
     });
   }
 

@@ -27,6 +27,7 @@ import { attachmentRouter } from "./modules/attachments/attachment.routes";
 import { activityEventRouter } from "./modules/activity-events/activity-event.routes";
 import { syncRouter } from "./modules/sync/sync.routes";
 import { requireAuth } from "./shared/auth/auth.middleware";
+import { auditMutatingUserAction } from "./shared/audit/user-action.middleware";
 
 export const apiRouter = Router();
 
@@ -35,29 +36,34 @@ apiRouter.get("/health", (_req, res) => {
 });
 
 apiRouter.use("/auth", authRouter);
-apiRouter.use("/users", requireAuth, userRouter);
-apiRouter.use("/mobs", requireAuth, mobRouter);
-apiRouter.use("/mob-paddock-allocations", requireAuth, mobPaddockAllocationRouter);
-apiRouter.use("/mob-movement-plans", requireAuth, mobMovementPlanRouter);
-apiRouter.use("/paddocks", requireAuth, paddockRouter);
-apiRouter.use("/crop-seasons", requireAuth, cropSeasonRouter);
-apiRouter.use("/paddock-plans", requireAuth, paddockPlanRouter);
-apiRouter.use("/production-plans", requireAuth, productionPlanRouter);
-apiRouter.use("/issues", requireAuth, issueRouter);
-apiRouter.use("/tasks", requireAuth, taskRouter);
-apiRouter.use("/feeders", requireAuth, feederRouter);
-apiRouter.use("/hay-lots", requireAuth, hayLotRouter);
-apiRouter.use("/grain-lots", requireAuth, grainLotRouter);
-apiRouter.use("/feed-events", requireAuth, feedEventRouter);
-apiRouter.use("/contractors", requireAuth, contractorRouter);
-apiRouter.use("/pest-spottings", requireAuth, pestSpottingRouter);
-apiRouter.use("/attachments", requireAuth, attachmentRouter);
-apiRouter.use("/activity-events", requireAuth, activityEventRouter);
-apiRouter.use("/lora-nodes", requireAuth, loraNodeRouter);
-apiRouter.use("/sensors", requireAuth, sensorRouter);
-apiRouter.use("/sensor-readings", requireAuth, sensorReadingRouter);
-apiRouter.use("/water-assets", requireAuth, waterAssetRouter);
-apiRouter.use("/water-links", requireAuth, waterLinkRouter);
-apiRouter.use("/sync", requireAuth, syncRouter);
-apiRouter.use("/map", requireAuth, mapRouter);
+
+const mountProtected = (path: string, router: Router): void => {
+  apiRouter.use(path, requireAuth, auditMutatingUserAction, router);
+};
+
+mountProtected("/users", userRouter);
+mountProtected("/mobs", mobRouter);
+mountProtected("/mob-paddock-allocations", mobPaddockAllocationRouter);
+mountProtected("/mob-movement-plans", mobMovementPlanRouter);
+mountProtected("/paddocks", paddockRouter);
+mountProtected("/crop-seasons", cropSeasonRouter);
+mountProtected("/paddock-plans", paddockPlanRouter);
+mountProtected("/production-plans", productionPlanRouter);
+mountProtected("/issues", issueRouter);
+mountProtected("/tasks", taskRouter);
+mountProtected("/feeders", feederRouter);
+mountProtected("/hay-lots", hayLotRouter);
+mountProtected("/grain-lots", grainLotRouter);
+mountProtected("/feed-events", feedEventRouter);
+mountProtected("/contractors", contractorRouter);
+mountProtected("/pest-spottings", pestSpottingRouter);
+mountProtected("/attachments", attachmentRouter);
+mountProtected("/activity-events", activityEventRouter);
+mountProtected("/lora-nodes", loraNodeRouter);
+mountProtected("/sensors", sensorRouter);
+mountProtected("/sensor-readings", sensorReadingRouter);
+mountProtected("/water-assets", waterAssetRouter);
+mountProtected("/water-links", waterLinkRouter);
+mountProtected("/sync", syncRouter);
+mountProtected("/map", mapRouter);
 apiRouter.use("/lora", loraRouter);

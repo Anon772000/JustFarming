@@ -381,7 +381,7 @@ export function App() {
             <h2>Operations</h2>
             <p>Daily ops: mobs, paddocks, moves, issues, tasks, feed, contractors, pest spotting, events, timeline, planning, and maps.</p>
 
-            <div className="actions">
+            <div className="actions appViewActions">
               <button
                 className={view === "mobs" ? "btn btnPrimary" : "btn"}
                 type="button"

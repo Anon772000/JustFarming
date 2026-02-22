@@ -31,6 +31,7 @@ export interface MobMovementPlan {
   id: UUID;
   farmId: UUID;
   mobId: UUID;
+  mob?: { id: UUID; name: string } | null;
   fromPaddockId?: UUID | null;
   toPaddockId: UUID;
   status: PlanStatus;

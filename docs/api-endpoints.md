@@ -26,6 +26,10 @@ Base path: `/api/v1`
 - `GET /users/me` (auth) -> `{ data: user }`
 - `GET /users` (manager) -> `{ data: user[] }`
 - `GET /users/audit?targetUserId=<uuid>&limit=<n>` (manager) -> `{ data: UserAuditEvent[] }`
+  - Includes:
+    - manager user-admin events (`USER_ADMIN_*`)
+    - user auth/session events (`USER_AUTH_*`)
+    - authenticated API mutation events (`USER_ACTION_API_MUTATION`)
 - `POST /users` (manager) -> `{ data: user }`
 - `GET /users/:userId` (manager) -> `{ data: user }`
 - `PATCH /users/:userId` (manager) -> `{ data: user }`
@@ -77,6 +81,9 @@ Resources:
 - `pest-spottings`
 - `attachments`
 - `activity-events`
+
+`mob-movement-plans` response note:
+- list/get/create/update responses include `mob?: { id: string, name: string }` to support UI labels.
 
 Special attachment endpoint:
 - `POST /attachments/upload` (multipart form-data; file field: `file`) -> `{ data: Attachment }`

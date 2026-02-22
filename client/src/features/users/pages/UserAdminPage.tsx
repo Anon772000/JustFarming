@@ -34,13 +34,28 @@ type UserAdminAuditEntry = {
   id: string;
   farmId: string;
   targetUserId: string;
-  eventType: "USER_ADMIN_CREATE" | "USER_ADMIN_UPDATE" | "USER_ADMIN_REVOKE_SESSION" | "USER_ADMIN_REVOKE_SESSIONS";
+  eventType: string;
   actorUserId?: string | null;
   details?: Record<string, unknown> | null;
   createdAt: string;
 };
 
-type AuditActionFilter = UserAdminAuditEntry["eventType"] | "all";
+type AuditActionFilter = "all" | string;
+
+const AUDIT_EVENT_LABELS: Record<string, string> = {
+  USER_ADMIN_CREATE: "Create user",
+  USER_ADMIN_UPDATE: "Update user",
+  USER_ADMIN_REVOKE_SESSION: "Revoke one session",
+  USER_ADMIN_REVOKE_SESSIONS: "Revoke all sessions",
+  USER_AUTH_LOGIN_SUCCESS: "Login success",
+  USER_AUTH_LOGIN_FAILED: "Login failed",
+  USER_AUTH_LOGIN_BLOCKED: "Login blocked (disabled)",
+  USER_AUTH_REFRESH: "Token refresh",
+  USER_AUTH_LOGOUT: "Logout",
+  USER_AUTH_LOGOUT_OTHERS: "Logout other devices",
+  USER_AUTH_REVOKE_SESSION: "Self revoke session",
+  USER_ACTION_API_MUTATION: "API mutation",
+};
 
 function normalizeRole(raw: string): UserRole {
   return raw.toLowerCase() === "manager" ? "manager" : "worker";
@@ -57,19 +72,8 @@ function isDisabled(user: User): boolean {
   return !!user.disabledAt;
 }
 
-function auditActionLabel(eventType: UserAdminAuditEntry["eventType"]): string {
-  switch (eventType) {
-    case "USER_ADMIN_CREATE":
-      return "Create user";
-    case "USER_ADMIN_UPDATE":
-      return "Update user";
-    case "USER_ADMIN_REVOKE_SESSION":
-      return "Revoke one session";
-    case "USER_ADMIN_REVOKE_SESSIONS":
-      return "Revoke all sessions";
-    default:
-      return eventType;
-  }
+function auditActionLabel(eventType: string): string {
+  return AUDIT_EVENT_LABELS[eventType] ?? eventType;
 }
 
 function formatAuditDetails(details: Record<string, unknown> | null | undefined): string {
@@ -262,6 +266,14 @@ export function UserAdminPage() {
     return users.slice().sort((a, b) => a.displayName.localeCompare(b.displayName));
   }, [users]);
 
+  const auditActionOptions = useMemo(() => {
+    const options = new Set<string>(Object.keys(AUDIT_EVENT_LABELS));
+    for (const a of audits) {
+      options.add(a.eventType);
+    }
+    return Array.from(options).sort((a, b) => auditActionLabel(a).localeCompare(auditActionLabel(b)));
+  }, [audits]);
+
   const filteredAudits = useMemo(() => {
     const search = auditSearch.trim().toLowerCase();
     const fromMs = parseFromDateMs(auditFromDate);
@@ -353,7 +365,7 @@ export function UserAdminPage() {
     }
 
     const stamp = new Date().toISOString().replaceAll(":", "-");
-    downloadCsv(`croxton-east-admin-audit-${stamp}.csv`, rows);
+    downloadCsv(`croxton-east-user-audit-${stamp}.csv`, rows);
     setNotice(`Exported ${filteredAudits.length} audit rows.`);
   };
 
@@ -752,8 +764,8 @@ export function UserAdminPage() {
 
       <header className="sectionHead">
         <div>
-          <h3>Admin Audit</h3>
-          <p className="muted">Recent manager actions for user administration.</p>
+          <h3>User Audit</h3>
+          <p className="muted">Audit across manager actions, user authentication events, and API mutation activity.</p>
         </div>
         <div className="actions">
           <button
@@ -777,10 +789,11 @@ export function UserAdminPage() {
           Action
           <select className="input" value={auditActionFilter} onChange={(e) => setAuditActionFilter(e.target.value as AuditActionFilter)}>
             <option value="all">All actions</option>
-            <option value="USER_ADMIN_CREATE">Create user</option>
-            <option value="USER_ADMIN_UPDATE">Update user</option>
-            <option value="USER_ADMIN_REVOKE_SESSION">Revoke one session</option>
-            <option value="USER_ADMIN_REVOKE_SESSIONS">Revoke all sessions</option>
+            {auditActionOptions.map((eventType) => (
+              <option key={eventType} value={eventType}>
+                {auditActionLabel(eventType)}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -850,7 +863,7 @@ export function UserAdminPage() {
       </div>
 
       {auditQuery.isLoading ? <p className="muted">Loading audit...</p> : null}
-      {auditQuery.isError ? <div className="alert">Failed to load admin audit.</div> : null}
+      {auditQuery.isError ? <div className="alert">Failed to load user audit.</div> : null}
 
       {!auditQuery.isLoading && !auditQuery.isError ? (
         <div className="tableWrap">

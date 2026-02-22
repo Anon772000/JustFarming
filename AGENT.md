@@ -91,7 +91,7 @@ npm run dev
 ### Implemented Coverage (Current Baseline)
 
 - Auth: login/refresh/logout + logout-others + session list/revoke
-- Users: me + manager user CRUD + audit + per-user session management
+- Users: me + manager user CRUD + audit (admin + auth/session + API mutation events) + per-user session management
 - CRUD resources currently implemented end-to-end:
   - `mobs`
   - `paddocks`

@@ -66,6 +66,10 @@ Response conventions:
   - Response: `{ data: User[] }`
 - `GET /users/audit?targetUserId=<uuid>&limit=<n>` (manager)
   - Response: `{ data: UserAuditEvent[] }`
+  - Event stream includes:
+    - `USER_ADMIN_*` manager user-management events
+    - `USER_AUTH_*` login/session/auth lifecycle events
+    - `USER_ACTION_API_MUTATION` entries for authenticated mutating API calls
 - `POST /users` (manager)
   - Request: `{ email: string, password: string, displayName: string, role?: "manager"|"worker" }`
   - Response: `{ data: User }`
@@ -133,6 +137,9 @@ Resources:
 - `GET /planning/mob-movements` -> `{ data: MobMovementPlan[] }`
 - `GET /planning/production` -> `{ data: ProductionPlan[] }`
 - `GET /events/actual?from=<ISODate>&to=<ISODate>` -> `{ data: ActivityEvent[] }`
+
+Mob movement response detail:
+- `MobMovementPlan` payloads include optional `mob` summary (`{ id, name }`) for UI display labels.
 
 ### Offline Sync
 

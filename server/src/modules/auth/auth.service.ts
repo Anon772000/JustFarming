@@ -4,6 +4,7 @@ import { prisma } from "../../shared/db/prisma";
 import { ApiError } from "../../shared/http/api-error";
 import { tokenService, AccessTokenPayload } from "../../shared/auth/token.service";
 import type { LoginInput } from "./auth.dto";
+import { logUserAudit } from "../users/user.service";
 
 function hashToken(token: string): string {
   // Store only a hash of refresh tokens.
@@ -33,6 +34,23 @@ function normalizeUserAgent(value: string | null | undefined): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   return trimmed.slice(0, 500);
+}
+
+function normalizeIp(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, 120);
+}
+
+type UserAuditArgs = Parameters<typeof logUserAudit>[1];
+
+async function safeLogUserAudit(args: UserAuditArgs): Promise<void> {
+  try {
+    await logUserAudit(prisma, args);
+  } catch {
+    // Avoid breaking auth/session flows if audit logging fails.
+  }
 }
 
 async function issueAndStoreTokens(
@@ -81,7 +99,7 @@ async function issueAndStoreTokens(
 }
 
 export class AuthService {
-  static async login(input: LoginInput, userAgent?: string | null) {
+  static async login(input: LoginInput, userAgent?: string | null, ip?: string | null) {
     const user = await prisma.user.findFirst({
       where: {
         email: {
@@ -96,11 +114,35 @@ export class AuthService {
     }
 
     if (user.disabledAt) {
+      await safeLogUserAudit({
+        farmId: user.farmId,
+        targetUserId: user.id,
+        actorUserId: user.id,
+        eventType: "USER_AUTH_LOGIN_BLOCKED",
+        details: {
+          email: user.email,
+          deviceId: normalizeDeviceId(input.deviceId),
+          userAgent: normalizeUserAgent(userAgent),
+          ip: normalizeIp(ip),
+        },
+      });
       throw new ApiError(403, "Account disabled. Contact your manager.");
     }
 
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) {
+      await safeLogUserAudit({
+        farmId: user.farmId,
+        targetUserId: user.id,
+        actorUserId: user.id,
+        eventType: "USER_AUTH_LOGIN_FAILED",
+        details: {
+          email: user.email,
+          deviceId: normalizeDeviceId(input.deviceId),
+          userAgent: normalizeUserAgent(userAgent),
+          ip: normalizeIp(ip),
+        },
+      });
       throw new ApiError(401, "Invalid credentials");
     }
 
@@ -108,6 +150,18 @@ export class AuthService {
     const tokens = await issueAndStoreTokens(payload, {
       deviceId: input.deviceId,
       userAgent,
+    });
+
+    await safeLogUserAudit({
+      farmId: user.farmId,
+      targetUserId: user.id,
+      actorUserId: user.id,
+      eventType: "USER_AUTH_LOGIN_SUCCESS",
+      details: {
+        deviceId: normalizeDeviceId(input.deviceId),
+        userAgent: normalizeUserAgent(userAgent),
+        ip: normalizeIp(ip),
+      },
     });
 
     return {
@@ -122,7 +176,7 @@ export class AuthService {
     };
   }
 
-  static async refresh(refreshToken: string, deviceId?: string, userAgent?: string | null) {
+  static async refresh(refreshToken: string, deviceId?: string, userAgent?: string | null, ip?: string | null) {
     let payload: AccessTokenPayload;
     try {
       payload = tokenService.verifyRefreshToken(refreshToken);
@@ -200,25 +254,58 @@ export class AuthService {
       userAgent: effectiveUserAgent,
     });
 
+    await safeLogUserAudit({
+      farmId: user.farmId,
+      targetUserId: user.id,
+      actorUserId: user.id,
+      eventType: "USER_AUTH_REFRESH",
+      details: {
+        deviceId: effectiveDeviceId,
+        userAgent: effectiveUserAgent,
+        ip: normalizeIp(ip),
+      },
+    });
+
     return tokens;
   }
 
-  static async logout(refreshToken: string) {
-    const tokenHash = hashToken(refreshToken);
+  static async logout(refreshToken: string, ip?: string | null) {
+    let payload: AccessTokenPayload | null = null;
+    try {
+      payload = tokenService.verifyRefreshToken(refreshToken);
+    } catch {
+      // ignore; logout remains best-effort by token hash
+    }
 
-    await prisma.refreshToken.updateMany({
+    const tokenHash = hashToken(refreshToken);
+    const now = new Date();
+
+    const result = await prisma.refreshToken.updateMany({
       where: {
         tokenHash,
         revokedAt: null,
       },
       data: {
-        revokedAt: new Date(),
-        lastUsedAt: new Date(),
+        revokedAt: now,
+        lastUsedAt: now,
       },
     });
+
+    if (payload) {
+      await safeLogUserAudit({
+        farmId: payload.farmId,
+        targetUserId: payload.sub,
+        actorUserId: payload.sub,
+        eventType: "USER_AUTH_LOGOUT",
+        details: {
+          revokedCount: result.count,
+          ip: normalizeIp(ip),
+        },
+      });
+    }
   }
 
-  static async logoutOthers(userId: string, currentRefreshToken: string) {
+  static async logoutOthers(userId: string, currentRefreshToken: string, ip?: string | null) {
     let payload: AccessTokenPayload;
     try {
       payload = tokenService.verifyRefreshToken(currentRefreshToken);
@@ -245,7 +332,7 @@ export class AuthService {
       throw new ApiError(401, "Current device session is no longer active");
     }
 
-    await prisma.refreshToken.updateMany({
+    const result = await prisma.refreshToken.updateMany({
       where: {
         userId,
         revokedAt: null,
@@ -254,6 +341,17 @@ export class AuthService {
       data: {
         revokedAt: new Date(),
         lastUsedAt: new Date(),
+      },
+    });
+
+    await safeLogUserAudit({
+      farmId: payload.farmId,
+      targetUserId: userId,
+      actorUserId: userId,
+      eventType: "USER_AUTH_LOGOUT_OTHERS",
+      details: {
+        revokedCount: result.count,
+        ip: normalizeIp(ip),
       },
     });
   }
@@ -284,10 +382,19 @@ export class AuthService {
     }));
   }
 
-  static async revokeSession(userId: string, sessionId: string) {
+  static async revokeSession(userId: string, sessionId: string, ip?: string | null) {
+    const user = await prisma.user.findFirst({
+      where: { id: userId },
+      select: { farmId: true },
+    });
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
     const session = await prisma.refreshToken.findFirst({
       where: { id: sessionId, userId },
-      select: { id: true, revokedAt: true },
+      select: { id: true, revokedAt: true, deviceId: true, userAgent: true },
     });
 
     if (!session) {
@@ -303,6 +410,19 @@ export class AuthService {
       data: {
         revokedAt: new Date(),
         lastUsedAt: new Date(),
+      },
+    });
+
+    await safeLogUserAudit({
+      farmId: user.farmId,
+      targetUserId: userId,
+      actorUserId: userId,
+      eventType: "USER_AUTH_REVOKE_SESSION",
+      details: {
+        sessionId,
+        deviceId: session.deviceId,
+        userAgent: session.userAgent,
+        ip: normalizeIp(ip),
       },
     });
   }
